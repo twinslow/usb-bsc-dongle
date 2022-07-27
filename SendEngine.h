@@ -10,6 +10,8 @@
 #define SEND_STATE_BCC1               4
 #define SEND_STATE_BCC2               5
 
+#define SEND_STATE_EOT                10
+
 
 class SendEngine {
     public:

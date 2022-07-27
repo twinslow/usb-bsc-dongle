@@ -47,18 +47,35 @@ int SendEngine::addOutputByte(uint8_t data) {
     return _sendDataBuffer.write(data);
 }
 
+/*
+What could be coming in ...
+
+    PAD SYN SYN SOH xx xx STX yy yy yy ETX BCC1 BCC2
+    PAD SYN SYN SOH xx xx STX yy yy yy ETB BCC1 BCC2
+    PAD SYN SYN STX yy yy yy ETB BCC1 BCC2
+    PAD SYN SYN DLE STX yy yy yy DLE ETX BCC1 BCC2
+    PAD SYN SYN DLE STX yy yy yy DLE ETB BCC1 BCC2
+    
+*/
 
 uint8_t SendEngine::xmitStateMachine(int data1, int data2) {
     switch(xmitState) {
         case SEND_STATE_IDLE:
-            if ( data1 == BSC_CONTROL_SYN && data2 == BSC_CONTROL_SOH ) {
+            if ( data1 == BSC_CONTROL_SYN && data2 == BSC_CONTROL_EOT ) {
+                xmitState = SEND_STATE_EOT;
+                return xmitState;
+            } else if ( data1 == BSC_CONTROL_SYN && 
+                 ( data2 == BSC_CONTROL_SOH || data2 == BSC_CONTROL_STX ) ) {
                 xmitState = SEND_STATE_XMIT;
+                return xmitState;
+            } else if ( data1 == BSC_CONTROL_DLE && data2 == BSC_CONTROL_STX ) {
+                xmitState = SEND_STATE_TRANSPARENT_XMIT;
                 return xmitState;
             }
             break;
 
         case SEND_STATE_XMIT:
-            if ( data1 == BSC_CONTROL_DLE && BSC_CONTROL_STX ) {
+            if ( data1 == BSC_CONTROL_DLE && data2 == BSC_CONTROL_STX ) {
                 xmitState = SEND_STATE_TRANSPARENT_XMIT;
                 return xmitState;
             } else if ( data2 == BSC_CONTROL_ENQ ) {
