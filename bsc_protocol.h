@@ -13,6 +13,7 @@
 #define BSC_CONTROL_PAD     0xFF
 #define BSC_CONTROL_NAK     0x3D
 #define BSC_CONTROL_ITB     0x1F
+#define BSC_CONTROL_EOT     0x37
 
 // These are preceeded by a DLE
 #define BSC_CONTROL_ACK0    0x70   

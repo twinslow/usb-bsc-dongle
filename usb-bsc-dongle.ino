@@ -117,16 +117,6 @@ long periodCounter;
 
 void setup() {
 
-    // Open serial communications and wait for port to open:
-    Serial.begin(57600);        // This should be faster than the DCE speed being implemented.
-                                // The synchronous DCE can send and receive faster than the input async port, if
-                                // this is a real serial link and not a native USB device. 
-                                // For USB native serial port on Leonardo the speed is irrelevant -- as it
-                                // native USB. 
-    while (!Serial) {
-      ; // wait for serial port to connect. Needed for native USB port only
-    }
-
     // RS232 pin names are from the DTE point of view. 
     // Therefore, for example, the DTE transmit data pin is an input to the
     // DCE. Likewise, the DTE receive data pin is an output from the DCE. 
@@ -143,7 +133,7 @@ void setup() {
     txdPin = 3;         // Input tx data
     rxdPin = 9;         // Output rx data 
 
-    bitRate = 9600;     // Bit rate. 19,200 bps is about the max for 
+    bitRate = 2400;     // Bit rate. 19,200 bps is about the max for 
                         // bit banging the synchronous serial DCE.
 
     pinMode(ctsPin, OUTPUT);
@@ -182,25 +172,39 @@ void setup() {
     interruptPeriod = (long)1000000 / bitRate / 2;
     oneSecondPeriodCount = 1000000 / interruptPeriod;
     periodCounter = 0;
+
+    digitalWrite(cdPin, LOW);     // Active low
+    digitalWrite(dsrPin, LOW);    // Active low  
+    digitalWrite(ctsPin, LOW);    // Active low 
     
     Timer1.initialize( interruptPeriod );  // 52 us for 9600 bps.
     Timer1.attachInterrupt(serialDriverInterruptRoutine); 
 
+    digitalWrite(rxdPin, LOW);
+    
+
+    // Open serial communications and wait for port to open:
+    Serial.begin(57600);        // This should be faster than the DCE speed being implemented.
+                                // The synchronous DCE can send and receive faster than the input async port, if
+                                // this is a real serial link and not a native USB device. 
+                                // For USB native serial port on Leonardo the speed is irrelevant -- as it
+                                // native USB. 
+//    while (!Serial) {
+//      ; // wait for serial port to connect. Needed for native USB port only
+//    }
+
+    return;
+    
 }
 
 void loop() {
     int data;
     uint8_t newXmitState;
-    
-//    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-//    delay(1000);                       // wait for a second
-//    digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-//    delay(1000);                       // wait for a second
-   
-    if ( Serial.available() ) {
+
+    if ( Serial && Serial.available() ) {
         data = Serial.read();
         if ( data > 0 ) {
-            Serial.write(data);
+            //Serial.write(data);
             sendEngine->addByte(data);
         }         
     }

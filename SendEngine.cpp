@@ -59,6 +59,8 @@ What could be coming in ...
 */
 
 uint8_t SendEngine::xmitStateMachine(int data1, int data2) {
+
+  
     switch(xmitState) {
         case SEND_STATE_IDLE:
             if ( data1 == BSC_CONTROL_SYN && data2 == BSC_CONTROL_EOT ) {
