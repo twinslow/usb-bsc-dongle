@@ -115,7 +115,40 @@ long interruptPeriod;
 long oneSecondPeriodCount;
 long periodCounter;
 
+#define CMD_WRITE   0x01
+#define CMD_READ    0x02
+#define CMD_POLL    0x05
+#define CMD_DEBUG   0x09
+
+
+void sendDebug(char *str) {
+    int len,x;
+    len = strlen(str);
+    Serial.write(CMD_DEBUG);
+    Serial.write(len & 0xff);
+    Serial.write(len>>8 & 0xff);
+    for ( x=0; x<len; x++ )
+        Serial.write(str[x]);
+}
+
+uint8_t dsrReady = false;
+
+void setDsrReady() {
+    if ( !dsrReady ) {
+        digitalWrite(dsrPin, LOW);    // Active low  
+        delay(500);
+        digitalWrite(cdPin, LOW);     // Active low
+        delay(500);
+        digitalWrite(rxdPin, HIGH);    // Idle state for the data line we are sending on.
+        dsrReady = true;
+    }
+}
+
 void setup() {
+    int i;
+    uint8_t *port;
+    uint8_t mask1, mask2;
+    char printbuff[256];
 
     // RS232 pin names are from the DTE point of view. 
     // Therefore, for example, the DTE transmit data pin is an input to the
@@ -135,7 +168,8 @@ void setup() {
 
     bitRate = 2400;     // Bit rate. 19,200 bps is about the max for 
                         // bit banging the synchronous serial DCE.
-
+    bitRate = 50;
+    
     pinMode(ctsPin, OUTPUT);
     pinMode(dsrPin, OUTPUT);
     pinMode(dtrPin, INPUT);
@@ -166,21 +200,21 @@ void setup() {
     TXCLK_BITMASK  = ~digitalPinToBitMask(txclkPin); 
 
     sendEngine = new SendEngine(rxdPin);
-    receiveEngine = new ReceiveEngine(txdPin);
+    receiveEngine = new ReceiveEngine(txdPin, ctsPin);
     
     // Set our interval timer. 
-    interruptPeriod = (long)1000000 / bitRate / 2;
-    oneSecondPeriodCount = 1000000 / interruptPeriod;
+    interruptPeriod = (long)1000000 / bitRate / 4;
+    oneSecondPeriodCount = (long)1000000 / interruptPeriod;
     periodCounter = 0;
 
-    digitalWrite(cdPin, LOW);     // Active low
-    digitalWrite(dsrPin, LOW);    // Active low  
-    digitalWrite(ctsPin, LOW);    // Active low 
+    digitalWrite(cdPin, HIGH);     // Active low
+    digitalWrite(dsrPin, HIGH);    // Active low  
+    digitalWrite(ctsPin, HIGH);    // Active low  
     
     Timer1.initialize( interruptPeriod );  // 52 us for 9600 bps.
     Timer1.attachInterrupt(serialDriverInterruptRoutine); 
 
-    digitalWrite(rxdPin, LOW);
+    digitalWrite(rxdPin, HIGH);
     
 
     // Open serial communications and wait for port to open:
@@ -189,37 +223,161 @@ void setup() {
                                 // this is a real serial link and not a native USB device. 
                                 // For USB native serial port on Leonardo the speed is irrelevant -- as it
                                 // native USB. 
-//    while (!Serial) {
-//      ; // wait for serial port to connect. Needed for native USB port only
-//    }
+    while (!Serial) {
+      ; // wait for serial port to connect. Needed for native USB port only
+    }
 
+    sprintf(printbuff, "Interrupt period is %d microseconds\0", interruptPeriod);
+    sendDebug(printbuff);
+
+    setDsrReady();
+    sendDebug("Completed setDsrReady() processing.");
+    
+    sprintf(printbuff, "txclkPin=%d", txclkPin);
+    sendDebug(printbuff);
+    
+    port = portOutputRegister(digitalPinToPort(txclkPin));
+
+    sprintf(printbuff, "port=%ld", (long int) port);
+    sendDebug(printbuff);
+
+    mask1 = digitalPinToBitMask(txclkPin); 
+    sprintf(printbuff, "mask1=%d", mask1);
+    sendDebug(printbuff);
+    
+    mask2  = ~digitalPinToBitMask(txclkPin); 
+    sprintf(printbuff, "mask2=%d", mask2);
+    sendDebug(printbuff);
+
+    while(true) {
+
+        
+        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
+//        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
+//        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
+
+        for ( i = 0; i < 2; i++ )
+            sendEngine->addByte((uint8_t)BSC_CONTROL_SYN);
+            
+        sendEngine->addByte((uint8_t)BSC_CONTROL_STX);
+        sendEngine->addByte((uint8_t)0xC1);
+        sendEngine->addByte((uint8_t)0xC2);
+        sendEngine->addByte((uint8_t)0xC3);
+        sendEngine->addByte((uint8_t)BSC_CONTROL_ETX);
+        sendEngine->addByte((uint8_t)0xC9);
+        sendEngine->addByte((uint8_t)0xC8);
+        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
+    
+        sendEngine->startSending();
+        delay(5000);
+        sendEngine->waitForSendIdle();
+        sendEngine->stopSending();
+    
+        delay(3000);
+    }
     return;
     
 }
 
+
 void loop() {
-    int data;
+    int cmd, cmdlen, data, datacnt, i;
     uint8_t newXmitState;
+    char printbuff[256];
 
     if ( Serial && Serial.available() ) {
-        data = Serial.read();
-        if ( data > 0 ) {
-            //Serial.write(data);
-            sendEngine->addByte(data);
-        }         
-    }
+        cmd = Serial.read();
+        if ( cmd >= 0 ) {
+            cmdlen = Serial.read();
+            cmdlen<<8;
+            cmdlen |= Serial.read();
+        }
+        sprintf(printbuff, "Got command: %d, length %d", cmd, cmdlen);
+        sendDebug(printbuff);
 
+        //setDsrReady();
+        
+        switch(cmd) {
+            case CMD_WRITE:
+                sprintf(printbuff, "Executing command WRITE");
+                sendDebug(printbuff);
+                
+                for ( i = 0; i < 3; i++ )
+                    sendEngine->addByte(BSC_CONTROL_SYN);
+                datacnt = 0;
+                while (datacnt++ < cmdlen ) {
+                    data = Serial.read();
+                    if ( data >= 0 ) {
+                        sendEngine->addByte(data);
+                    }         
+                }
+                sendDebug("About to start sending data for WRITE");
+                sendEngine->startSending();
+                sendDebug("Waiting for send-idle");
+                sendEngine->waitForSendIdle();
+
+                sendDebug("WRITE command completed");
+                break;
+            case CMD_POLL:
+                sprintf(printbuff, "Executing command POLL");
+                sendDebug(printbuff);
+                for ( i = 0; i < 5; i++ )
+                    sendEngine->addByte(BSC_CONTROL_SYN);
+                datacnt = 0;
+                while (datacnt++ < cmdlen ) {
+                    data = Serial.read();
+                    if ( data >= 0 ) {
+                        sendEngine->addByte(data);
+                    }         
+                }
+                sendEngine->startSending();
+                sendEngine->waitForSendIdle();
+               
+                sendDebug("POLL command completed");
+                break;
+            case CMD_READ:
+                receiveEngine->startReceiving();
+                sendEngine->stopSending();
+                sprintf(printbuff, "Executing command READ");
+                sendDebug(printbuff);
+
+                receiveEngine->waitReceivedFrameComplete();
+
+                sprintf(printbuff, "Got response -- sending frame of length %d back to host", receiveEngine->getFrameLength() );
+                sendDebug(printbuff);
+                
+                // Get data and send back to host.
+                Serial.write(CMD_WRITE);
+                Serial.write( receiveEngine->getFrameLength() & 0xff );
+                Serial.write( (receiveEngine->getFrameLength() >> 8) & 0xff );
+                for ( i=0; i<receiveEngine->getFrameLength(); i++) {
+                    Serial.write(receiveEngine->getFrameDataByte(i));
+                }
+                
+                sendDebug("READ command completed");
+                break;
+                
+            default:
+                sprintf(printbuff, "Unrecognized command code %d", cmd);
+                sendDebug(printbuff);
+            
+                // Unrecognized command -- ignore
+                break;
+        }
+    }
 }
 
 
 static void interruptAssertClockLines() {
+//        Serial.println("Assert clock lines");
         // Assert output clock for data being sent (which is on DTE rxdPin)
-        *RXCLK_PORT |= RXCLK_BIT;
         // Assert output clock for data being received (which is on DTE txdPin)
+        *RXCLK_PORT |= RXCLK_BIT;
         *TXCLK_PORT |= TXCLK_BIT;
 }
 
 static void interruptDeassertClockLines() {
+//        Serial.println("De-assert clock lines");
         // De-assert output clocks
         *RXCLK_PORT &= RXCLK_BITMASK;
         *TXCLK_PORT &= TXCLK_BITMASK;  
@@ -229,20 +387,48 @@ static void interruptEverySecond() {
   
 }
 
+uint8_t cycleNum = 0;
+
 void serialDriverInterruptRoutine(void) {
+    switch(cycleNum) {
+        case 0:
+            sendEngine->sendBit();
+            cycleNum++;
+            break;
+            
+        case 1:
+            interruptAssertClockLines();
+            cycleNum++;
+            break;
+        
+        case 2:
+            receiveEngine->getBit();
+            cycleNum++;
+            break;
+
+        case 3:
+            interruptDeassertClockLines();
+            cycleNum = 0;
+            break;
+    }
+#if 0    
     if ( interruptCycleState == CYCLE_STATE_STARTBIT ) {
+//        Serial.println("Calling sendbit");
         sendEngine->sendBit();
         interruptAssertClockLines();
-        interruptCycleState == CYCLE_STATE_MIDBIT;  
+        interruptCycleState = CYCLE_STATE_MIDBIT;  
     } else {
         receiveEngine->getBit();
         interruptDeassertClockLines();
-        interruptCycleState == CYCLE_STATE_STARTBIT;  
-    }
+        interruptCycleState = CYCLE_STATE_STARTBIT;  
 
-    periodCounter++;
-    if ( periodCounter > oneSecondPeriodCount ) {
-        interruptEverySecond();
-        periodCounter = 0;
+        // Now we can post process the bit(s) received.
+        receiveEngine->processBit();
     }
+#endif
+//    periodCounter++;
+//    if ( periodCounter > oneSecondPeriodCount ) {
+//        interruptEverySecond();
+//        periodCounter = 0;
+//    }
 }
