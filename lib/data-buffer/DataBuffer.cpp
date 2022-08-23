@@ -5,31 +5,31 @@
 DataBuffer::DataBuffer() {
     _complete = 0;
     _len = 0;
-    _readPos = 0;  
+    _readPos = 0;
 }
 
 void DataBuffer::clear()
 {
     _complete = 0;
     _len = 0;
-    _readPos = DATABUFF_MAX_DATA - 1;  
+    _readPos = DATABUFF_MAX_DATA - 1;
 }
 
 int DataBuffer::read(uint8_t *data)
 {
-    _readPos++;
-    if ( _len == 0 || _readPos > _len )
+    _readPos;
+    if ( _len == 0 || _readPos >= _len )
         return -1;     // Fail, buffer empty or reached end.
-    
-    *data = _buff[_readPos-1];
-    return _readPos;  
+
+    *data = _buff[_readPos];
+    return _readPos++;      // Note deliberate post increment.
 }
 
 int DataBuffer::readLast(void)
 {
     if ( _len == 0 )
         return -1;     // Fail, buffer empty.
-    
+
     return _buff[_len - 1];  // Return the last byte written
 }
 
@@ -37,8 +37,8 @@ int DataBuffer::get(int idx)
 {
     if ( idx >= _len )
         return -1;     // Fail, buffer empty / beyond end.
-    
-    return _buff[idx];  // Return the byte at idx 
+
+    return _buff[idx];  // Return the byte at idx
 }
 
 int DataBuffer::getLength(void) {
