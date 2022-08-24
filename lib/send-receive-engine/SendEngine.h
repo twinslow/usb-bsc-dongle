@@ -11,13 +11,21 @@
 class SendEngine {
     public:
         SendEngine(uint8_t rxdPin);
-        void sendBit(void);  
+        void sendBit(void);
         volatile uint8_t xmitState = SEND_STATE_IDLE;
         int addByte(int data);
         void startSending();
         void stopSending();
         void waitForSendIdle();
-        
+        uint8_t *getRxdPort();
+        uint8_t getRxdBitMask();
+        uint8_t getRxdBitNotMask();
+        uint8_t getBitBuffer();
+        uint8_t getBitBufferLength();
+        uint8_t _savedBitBuffer;
+        DataBuffer getDataBuffer(void);
+        uint8_t lastBitSent;
+
     private:
         DataBuffer  _sendDataBuffer;
         uint8_t     _sendBitBuffer;

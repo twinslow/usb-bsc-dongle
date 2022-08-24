@@ -12,7 +12,7 @@ void DataBuffer::clear()
 {
     _complete = 0;
     _len = 0;
-    _readPos = DATABUFF_MAX_DATA - 1;
+    _readPos = 0;
 }
 
 int DataBuffer::read(uint8_t *data)
@@ -43,6 +43,10 @@ int DataBuffer::get(int idx)
 
 int DataBuffer::getLength(void) {
     return _len;
+}
+
+int DataBuffer::getPos(void) {
+    return _readPos;
 }
 
 int DataBuffer::write(uint8_t data)

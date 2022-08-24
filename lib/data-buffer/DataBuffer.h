@@ -12,6 +12,7 @@ class DataBuffer {
         int read(uint8_t *data);
         int readLast(void);
         int get(int idx);
+        int getPos();
         int getLength();
         int write(uint8_t data);
         int setComplete();

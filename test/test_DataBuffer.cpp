@@ -2,14 +2,6 @@
 #include <unity.h>
 #include "DataBuffer.h"
 
-void setUp(void) {
-
-}
-
-void tearDown(void) {
-
-}
-
 void test_DataBuffer_constructor(void) {
     DataBuffer buff;
     uint8_t dataByte;
@@ -75,6 +67,7 @@ void test_DataBuffer_clear(void) {
     TEST_ASSERT_EQUAL(1, buff.write(inByte));
     TEST_ASSERT_EQUAL(1, buff.getLength());
     TEST_ASSERT_EQUAL(0x41, buff.readLast());
+    TEST_ASSERT_EQUAL(0, buff.getPos());
 
     buff.clear();
 
@@ -82,19 +75,12 @@ void test_DataBuffer_clear(void) {
     TEST_ASSERT_EQUAL(-1, buff.read(&outByte));
     TEST_ASSERT_EQUAL(-1, buff.get(0));
     TEST_ASSERT_EQUAL(-1, buff.readLast());
+    TEST_ASSERT_EQUAL(0, buff.getPos());
 }
 
 
-void setup() {
-    delay(2000);
-
-    UNITY_BEGIN();
-}
-
-void loop() {
+void test_DataBuffer() {
     RUN_TEST(test_DataBuffer_constructor);
     RUN_TEST(test_DataBuffer_write_read_get);
     RUN_TEST(test_DataBuffer_clear);
-    UNITY_END();
-    while(1);
 }
