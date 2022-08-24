@@ -24,7 +24,7 @@ class SendEngine {
         uint8_t getRxdBitNotMask();
         uint8_t getBitBuffer();
         uint8_t getBitBufferLength();
-        int getRemainingDataToBeSend(void);
+        int getRemainingDataToBeSent(void);
         uint8_t _savedBitBuffer;
         DataBuffer getDataBuffer(void);
         uint8_t lastBitSent;

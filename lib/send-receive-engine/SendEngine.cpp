@@ -12,22 +12,22 @@ SendEngine::SendEngine(uint8_t rxdPin) {
 
     // Initialize/clear data buffers
     _sendDataBuffer.clear();
-
     _sendBitBufferLength = 0;
 
     // Initialize the state engine to be idle.
     xmitState = SEND_STATE_OFF;
+    _stopOnIdle = false;
 }
 
 void SendEngine::clearBuffer(void)
 {
     // Initialize/clear data buffers
     _sendDataBuffer.clear();
-
     _sendBitBufferLength = 0;
 
     // Initialize the state engine to be idle.
     xmitState = SEND_STATE_OFF;
+    _stopOnIdle = false;
 }
 
 uint8_t *SendEngine::getRxdPort(void)
@@ -129,7 +129,7 @@ void SendEngine::stopSendingOnIdle() {
     _stopOnIdle = true;
 }
 
-int SendEngine::getRemainingDataToBeSend(void) {
+int SendEngine::getRemainingDataToBeSent(void) {
     int remainingDataLength = _sendDataBuffer.getLength() - _sendDataBuffer.getPos();
     return remainingDataLength;
 }

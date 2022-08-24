@@ -44,6 +44,8 @@ void test_SendEngine_sendBit(void) {
     TEST_ASSERT_EQUAL( 0x31, db.get(1) );
     TEST_ASSERT_EQUAL( 0, db.getPos() );
 
+    TEST_ASSERT_EQUAL(2, eng.getRemainingDataToBeSent());
+
     eng.sendBit();
     TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
     TEST_ASSERT_EQUAL( 7, eng.getBitBufferLength());
@@ -79,6 +81,7 @@ void test_SendEngine_sendBit(void) {
     TEST_ASSERT_EQUAL( 0, eng.getBitBufferLength());
     TEST_ASSERT_EQUAL( 0b00000000, eng.getBitBuffer() );
 
+    TEST_ASSERT_EQUAL(1, eng.getRemainingDataToBeSent());
 
     eng.sendBit();
     TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
@@ -101,73 +104,182 @@ void test_SendEngine_sendBit(void) {
     eng.sendBit();
     TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
 
+    TEST_ASSERT_EQUAL(0, eng.getRemainingDataToBeSent());
+
+    // Idle/SYN being sent as no more data in buffer.
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+ }
+
+void test_SendEngine_startSending(void) {
+    SendEngine eng(RXD_PIN);
+    uint8_t dataByte;
+
+    TEST_ASSERT_EQUAL(SEND_STATE_OFF, eng.xmitState);
+    eng.startSending();
+    TEST_ASSERT_EQUAL(SEND_STATE_XMIT, eng.xmitState);
 }
 
-/*
-void test_DataBuffer_write_read_get(void) {
-    DataBuffer buff;
-    uint8_t inByte, outByte;
+void test_SendEngine_stopSending(void) {
+    SendEngine eng(RXD_PIN);
+    uint8_t dataByte;
 
-    inByte = 'A';
-    TEST_ASSERT_EQUAL(1, buff.write(inByte));
-    TEST_ASSERT_EQUAL(1, buff.getLength());
-    TEST_ASSERT_EQUAL(0x41, buff.readLast());
-
-    inByte = 'B';
-    TEST_ASSERT_EQUAL(2, buff.write(inByte));
-    TEST_ASSERT_EQUAL(2, buff.getLength());
-    TEST_ASSERT_EQUAL(0x42, buff.readLast());
-
-    TEST_ASSERT_EQUAL(0x41, buff.get(0));
-    TEST_ASSERT_EQUAL(0x42, buff.get(1));
-    TEST_ASSERT_EQUAL(-1, buff.get(2));
-
-    // Read back ...
-    TEST_ASSERT_EQUAL(0, buff.read(&outByte));
-    TEST_ASSERT_EQUAL(0x41, outByte);
-    TEST_ASSERT_EQUAL(2, buff.getLength());
-
-    TEST_ASSERT_EQUAL(1, buff.read(&outByte));
-    TEST_ASSERT_EQUAL(0x42, outByte);
-    TEST_ASSERT_EQUAL(2, buff.getLength());
-
-    // Read beyond end
-    TEST_ASSERT_EQUAL(-1, buff.read(&outByte));
-
-    // Write another ...
-    inByte = 'C';
-    TEST_ASSERT_EQUAL(3, buff.write(inByte));
-    TEST_ASSERT_EQUAL(3, buff.getLength());
-    TEST_ASSERT_EQUAL(0x43, buff.readLast());
-
-    TEST_ASSERT_EQUAL(2, buff.read(&outByte));
-    TEST_ASSERT_EQUAL(0x43, outByte);
-    TEST_ASSERT_EQUAL(3, buff.getLength());
-
-    // Read beyond end
-    TEST_ASSERT_EQUAL(-1, buff.read(&outByte));
+    eng.startSending();
+    TEST_ASSERT_EQUAL(SEND_STATE_XMIT, eng.xmitState);
+    eng.stopSending();
+    TEST_ASSERT_EQUAL(SEND_STATE_OFF, eng.xmitState);
 }
 
-void test_DataBuffer_clear(void) {
-    DataBuffer buff;
-    uint8_t inByte, outByte;
+void test_SendEngine_stopSendingOnIdle1(void) {
+    SendEngine eng(RXD_PIN);
+    uint8_t dataByte;
+    DataBuffer db;
 
-    inByte = 'A';
-    TEST_ASSERT_EQUAL(1, buff.write(inByte));
-    TEST_ASSERT_EQUAL(1, buff.getLength());
-    TEST_ASSERT_EQUAL(0x41, buff.readLast());
+    TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
 
-    buff.clear();
+    eng.startSending();
+    TEST_ASSERT_EQUAL( SEND_STATE_XMIT, eng.xmitState );
 
-    TEST_ASSERT_EQUAL(0, buff.getLength());
-    TEST_ASSERT_EQUAL(-1, buff.read(&outByte));
-    TEST_ASSERT_EQUAL(-1, buff.get(0));
-    TEST_ASSERT_EQUAL(-1, buff.readLast());
+    TEST_ASSERT_EQUAL(1, eng.getRemainingDataToBeSent());
+
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+
+    TEST_ASSERT_EQUAL(0, eng.getRemainingDataToBeSent());
+
+    // Idle/SYN being sent as no more data in buffer.
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+
+    // We issue the stop sending on idle in the middle of this byte...
+    eng.stopSendingOnIdle();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+
+    // As the last bit was sent, we should now be xmit state of off.
+    eng.sendBit();          // One more sendbit, which won't actually do anything other
+                            // change the xmitState.
+    TEST_ASSERT_EQUAL(SEND_STATE_OFF, eng.xmitState);
+
 }
 
-*/
+void test_SendEngine_stopSendingOnIdle2(void) {
+    SendEngine eng(RXD_PIN);
+    uint8_t dataByte;
+    DataBuffer db;
+
+    TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
+
+    eng.startSending();
+    TEST_ASSERT_EQUAL( SEND_STATE_XMIT, eng.xmitState );
+
+    TEST_ASSERT_EQUAL(1, eng.getRemainingDataToBeSent());
+
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+
+    // We issue the stop sending on idle in the middle of this byte...
+    eng.stopSendingOnIdle();
+
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+
+    TEST_ASSERT_EQUAL(0, eng.getRemainingDataToBeSent());
+
+    // As the last bit was sent, we should now be xmit state of off.
+    eng.sendBit();          // One more sendbit, which won't actually do anything other
+                            // change the xmitState.
+
+    TEST_ASSERT_EQUAL(SEND_STATE_OFF, eng.xmitState);
+ }
+
+void test_SendEngine_clearBuffer(void) {
+    SendEngine eng(RXD_PIN);
+    uint8_t dataByte;
+    DataBuffer db;
+
+    TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
+
+    eng.startSending();
+    TEST_ASSERT_EQUAL( SEND_STATE_XMIT, eng.xmitState );
+
+    TEST_ASSERT_EQUAL(1, eng.getRemainingDataToBeSent());
+
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
+    eng.sendBit();
+    TEST_ASSERT_EQUAL( 0, eng.lastBitSent );
+
+    eng.clearBuffer();
+    TEST_ASSERT_EQUAL( 0, eng.getBitBufferLength() );
+    TEST_ASSERT_EQUAL( 0, eng.getRemainingDataToBeSent() );
+    TEST_ASSERT_EQUAL( SEND_STATE_OFF, eng.xmitState );
+
+    db = eng.getDataBuffer();
+    TEST_ASSERT_EQUAL( 0, db.getPos() );
+    TEST_ASSERT_EQUAL( 0, db.getLength() );
+
+ }
+
 
 void test_SendEngine() {
     RUN_TEST(test_SendEngine_constructor);
     RUN_TEST(test_SendEngine_sendBit);
+    RUN_TEST(test_SendEngine_startSending);
+    RUN_TEST(test_SendEngine_stopSending);
+    RUN_TEST(test_SendEngine_stopSendingOnIdle1);
+    RUN_TEST(test_SendEngine_stopSendingOnIdle2);
+    RUN_TEST(test_SendEngine_clearBuffer);
 }

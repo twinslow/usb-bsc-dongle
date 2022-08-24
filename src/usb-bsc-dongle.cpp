@@ -178,8 +178,8 @@ void loop() {
                         sendEngine->addByte(data);
                     }
                 }
-                sprintf(printbuff, "About to start sending %d bytes of data for WRITE", 
-                    sendEngine->getRemainingDataToBeSend());
+                sprintf(printbuff, "About to start sending %d bytes of data for WRITE",
+                    sendEngine->getRemainingDataToBeSent());
                 sendDebug(printbuff);
 
                 sendEngine->startSending();
@@ -188,7 +188,7 @@ void loop() {
 
                 delay(1000);
                 sprintf(printbuff, "WRITE command completed with %d bytes of data remaining to be sent",
-                     sendEngine->getRemainingDataToBeSend());
+                     sendEngine->getRemainingDataToBeSent());
                 sendDebug(printbuff);
                 break;
 
