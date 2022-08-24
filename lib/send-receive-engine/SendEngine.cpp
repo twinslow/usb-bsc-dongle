@@ -19,7 +19,19 @@ SendEngine::SendEngine(uint8_t rxdPin) {
     xmitState = SEND_STATE_OFF;
 }
 
-uint8_t *SendEngine::getRxdPort(void) {
+void SendEngine::clearBuffer(void)
+{
+    // Initialize/clear data buffers
+    _sendDataBuffer.clear();
+
+    _sendBitBufferLength = 0;
+
+    // Initialize the state engine to be idle.
+    xmitState = SEND_STATE_OFF;
+}
+
+uint8_t *SendEngine::getRxdPort(void)
+{
     return _RXD_PORT;
 }
 
@@ -56,6 +68,10 @@ void SendEngine::sendBit() {
             // There was nothing in the data buffer, so we going to send an
             // idle character.
             _sendBitBuffer = BSC_CONTROL_IDLE;
+            if ( _stopOnIdle ) {
+                xmitState = SEND_STATE_OFF;
+                return;
+            }
             xmitState = SEND_STATE_IDLE;
         } else {
             xmitState = SEND_STATE_XMIT;
@@ -97,6 +113,7 @@ int SendEngine::addByte(int data) {
 
 void SendEngine::startSending() {
     xmitState = SEND_STATE_XMIT;
+    _stopOnIdle = false;
 }
 
 void SendEngine::stopSending() {
@@ -104,5 +121,15 @@ void SendEngine::stopSending() {
 }
 
 void SendEngine::waitForSendIdle() {
-    while ( xmitState != SEND_STATE_IDLE );
+    while (xmitState != SEND_STATE_IDLE &&
+           xmitState != SEND_STATE_OFF);
+}
+
+void SendEngine::stopSendingOnIdle() {
+    _stopOnIdle = true;
+}
+
+int SendEngine::getRemainingDataToBeSend(void) {
+    int remainingDataLength = _sendDataBuffer.getLength() - _sendDataBuffer.getPos();
+    return remainingDataLength;
 }

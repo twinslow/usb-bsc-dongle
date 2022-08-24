@@ -167,36 +167,46 @@ void loop() {
             case CMD_WRITE:
                 sprintf(printbuff, "Executing command WRITE");
                 sendDebug(printbuff);
-
+                sendEngine->clearBuffer();
                 for ( i = 0; i < 3; i++ )
                     sendEngine->addByte(BSC_CONTROL_SYN);
-                datacnt = 0;
-                while (datacnt++ < cmdlen ) {
+                for (i = 0; i < cmdlen; i++) {
                     data = Serial.read();
-                    if ( data >= 0 ) {
+                    if (data >= 0) {
+                        sprintf(printbuff, "     Adding byte %d to send-buffer", data);
+                        sendDebug(printbuff);
                         sendEngine->addByte(data);
                     }
                 }
-                sendDebug("About to start sending data for WRITE");
+                sprintf(printbuff, "About to start sending %d bytes of data for WRITE", 
+                    sendEngine->getRemainingDataToBeSend());
+                sendDebug(printbuff);
+
                 sendEngine->startSending();
-                sendDebug("Waiting for send-idle");
+                sendEngine->stopSendingOnIdle();
                 sendEngine->waitForSendIdle();
 
-                sendDebug("WRITE command completed");
+                delay(1000);
+                sprintf(printbuff, "WRITE command completed with %d bytes of data remaining to be sent",
+                     sendEngine->getRemainingDataToBeSend());
+                sendDebug(printbuff);
                 break;
+
             case CMD_POLL:
                 sprintf(printbuff, "Executing command POLL");
                 sendDebug(printbuff);
-                for ( i = 0; i < 5; i++ )
+                sendEngine->clearBuffer();
+                for (i = 0; i < 5; i++)
                     sendEngine->addByte(BSC_CONTROL_SYN);
-                datacnt = 0;
-                while (datacnt++ < cmdlen ) {
+                for (i = 0; i < cmdlen; i++) {
                     data = Serial.read();
-                    if ( data >= 0 ) {
+                    if (data >= 0)
+                    {
                         sendEngine->addByte(data);
                     }
                 }
                 sendEngine->startSending();
+                sendEngine->stopSendingOnIdle();
                 sendEngine->waitForSendIdle();
 
                 sendDebug("POLL command completed");
@@ -324,7 +334,7 @@ void setup() {
 
     bitRate = 2400;     // Bit rate. 19,200 bps is about the max for
                         // bit banging the synchronous serial DCE.
-    bitRate = 50;
+    //bitRate = 50;
 
     pinMode(ctsPin, OUTPUT);
     pinMode(dsrPin, OUTPUT);
@@ -404,15 +414,15 @@ void setup() {
     mask2  = ~digitalPinToBitMask(txclkPin);
     sprintf(printbuff, "mask2=%d", mask2);
     sendDebug(printbuff);
-
+/*
     while(true) {
 
-
+        sendEngine->clearBuffer();
         sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
 //        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
 //        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
 
-        for ( i = 0; i < 2; i++ )
+        for ( i = 0; i < 4; i++ )
             sendEngine->addByte((uint8_t)BSC_CONTROL_SYN);
 
         sendEngine->addByte((uint8_t)BSC_CONTROL_STX);
@@ -425,12 +435,13 @@ void setup() {
         sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
 
         sendEngine->startSending();
-        delay(5000);
+//        delay(100);
         sendEngine->waitForSendIdle();
         sendEngine->stopSending();
 
-        delay(3000);
+        delay(1000);
     }
+*/
     return;
 
 }
