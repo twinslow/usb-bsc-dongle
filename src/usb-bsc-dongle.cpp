@@ -126,8 +126,8 @@ void sendDebug(char *str) {
     int len,x;
     len = strlen(str);
     Serial.write(CMD_DEBUG);
-    Serial.write(len & 0xff);
     Serial.write(len>>8 & 0xff);
+    Serial.write(len & 0xff);
     for ( x=0; x<len; x++ )
         Serial.write(str[x]);
 }
@@ -145,10 +145,8 @@ void setDsrReady() {
     }
 }
 
-
 void loop() {
-    int cmd, cmdlen, data, datacnt, i;
-    uint8_t newXmitState;
+    int cmd, cmdlen, data, i;
     char printbuff[256];
 
     if ( Serial && Serial.available() ) {
@@ -186,7 +184,7 @@ void loop() {
                 sendEngine->stopSendingOnIdle();
                 sendEngine->waitForSendIdle();
 
-                delay(1000);
+                //delay(1000);
                 sprintf(printbuff, "WRITE command completed with %d bytes of data remaining to be sent",
                      sendEngine->getRemainingDataToBeSent());
                 sendDebug(printbuff);
@@ -196,7 +194,7 @@ void loop() {
                 sprintf(printbuff, "Executing command POLL");
                 sendDebug(printbuff);
                 sendEngine->clearBuffer();
-                for (i = 0; i < 5; i++)
+                for (i = 0; i < 3; i++)
                     sendEngine->addByte(BSC_CONTROL_SYN);
                 for (i = 0; i < cmdlen; i++) {
                     data = Serial.read();
@@ -213,7 +211,7 @@ void loop() {
                 break;
             case CMD_READ:
                 receiveEngine->startReceiving();
-                sendEngine->stopSending();
+                //sendEngine->stopSending();
                 sprintf(printbuff, "Executing command READ");
                 sendDebug(printbuff);
 
@@ -224,8 +222,8 @@ void loop() {
 
                 // Get data and send back to host.
                 Serial.write(CMD_WRITE);
-                Serial.write( receiveEngine->getFrameLength() & 0xff );
                 Serial.write( (receiveEngine->getFrameLength() >> 8) & 0xff );
+                Serial.write( receiveEngine->getFrameLength() & 0xff );
                 for ( i=0; i<receiveEngine->getFrameLength(); i++) {
                     Serial.write(receiveEngine->getFrameDataByte(i));
                 }
@@ -243,17 +241,14 @@ void loop() {
     }
 }
 
-
-static void interruptAssertClockLines() {
-//        Serial.println("Assert clock lines");
+inline void interruptAssertClockLines() {
         // Assert output clock for data being sent (which is on DTE rxdPin)
         // Assert output clock for data being received (which is on DTE txdPin)
         *RXCLK_PORT |= RXCLK_BIT;
         *TXCLK_PORT |= TXCLK_BIT;
 }
 
-static void interruptDeassertClockLines() {
-//        Serial.println("De-assert clock lines");
+inline void interruptDeassertClockLines() {
         // De-assert output clocks
         *RXCLK_PORT &= RXCLK_BITMASK;
         *TXCLK_PORT &= TXCLK_BITMASK;
@@ -263,45 +258,34 @@ static void interruptEverySecond() {
 
 }
 
-uint8_t cycleNum = 0;
 
 void serialDriverInterruptRoutine(void) {
-    switch(cycleNum) {
+    static uint8_t clockPhase = 0;
+    switch(clockPhase) {
         case 0:
+            // Put the output data pin in the correct state
             sendEngine->sendBit();
-            cycleNum++;
+            clockPhase++;
             break;
 
         case 1:
+            // Set the output clock lines to high
             interruptAssertClockLines();
-            cycleNum++;
+            clockPhase++;
             break;
 
         case 2:
+            // Read the state of the input data pin
             receiveEngine->getBit();
-            cycleNum++;
+            clockPhase++;
             break;
 
         case 3:
+            // Set the output clock lines to low.
             interruptDeassertClockLines();
-            cycleNum = 0;
+            clockPhase = 0;
             break;
     }
-#if 0
-    if ( interruptCycleState == CYCLE_STATE_STARTBIT ) {
-//        Serial.println("Calling sendbit");
-        sendEngine->sendBit();
-        interruptAssertClockLines();
-        interruptCycleState = CYCLE_STATE_MIDBIT;
-    } else {
-        receiveEngine->getBit();
-        interruptDeassertClockLines();
-        interruptCycleState = CYCLE_STATE_STARTBIT;
-
-        // Now we can post process the bit(s) received.
-        receiveEngine->processBit();
-    }
-#endif
 //    periodCounter++;
 //    if ( periodCounter > oneSecondPeriodCount ) {
 //        interruptEverySecond();
@@ -312,7 +296,7 @@ void serialDriverInterruptRoutine(void) {
 
 void setup() {
     int i;
-    uint8_t *port;
+    volatile uint8_t *port;
     uint8_t mask1, mask2;
     char printbuff[256];
 

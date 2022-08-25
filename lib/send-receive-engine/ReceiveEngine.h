@@ -10,18 +10,32 @@
 #define RECEIVE_STATE_TRANSPARENT_DATA  3
 #define RECEIVE_STATE_BCC1              4
 #define RECEIVE_STATE_BCC2              5
+#define RECEIVE_STATE_PAD               6
 
 
 
 class ReceiveEngine {
     public:
         ReceiveEngine(uint8_t txdPin, uint8_t ctsPin);    // Transmit pin of the DTE ... our receive pin.
-        void getBit(void);  
+        void getBit(uint8_t val);
+        void getBit(void);
+        void setBit(uint8_t bit);
         void processBit(void);
         void startReceiving(void);
+        void stopReceiving(void);
         void waitReceivedFrameComplete(void);
         int getFrameLength(void);
         int getFrameDataByte(int idx);
+        uint8_t *getTxdPort(void);
+        uint8_t getTxdBitMask(void);
+        uint8_t getTxdBitNotMask(void);
+        uint8_t getBitBuffer(void);
+        uint8_t getCtsPin(void);
+        void setBitBuffer(uint8_t data);
+        uint8_t getInCharSync(void);
+        uint8_t receiveState;
+        DataBuffer * getDataBuffer(void);
+        bool isFrameComplete(void);
 
     private:
         DataBuffer           _receiveDataBuffer;
@@ -36,8 +50,7 @@ class ReceiveEngine {
         uint8_t           _TXD_BIT;
         uint8_t           _TXD_BITMASK;
         uint8_t           _ctsPin;
-        
-        uint8_t     _receiveState;
+
 };
 
 #endif

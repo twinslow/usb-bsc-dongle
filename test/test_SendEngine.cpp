@@ -7,19 +7,15 @@
 
 void test_SendEngine_constructor(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
 
     TEST_ASSERT_EQUAL(portOutputRegister(digitalPinToPort(RXD_PIN)), eng.getRxdPort());
     TEST_ASSERT_EQUAL(digitalPinToBitMask(RXD_PIN), eng.getRxdBitMask());
     TEST_ASSERT_EQUAL((uint8_t)~digitalPinToBitMask(RXD_PIN), eng.getRxdBitNotMask());
-
 }
 
 void test_SendEngine_sendBit(void) {
     SendEngine eng(RXD_PIN);
     uint8_t dataByte;
-    volatile uint8_t *port;
-    uint8_t pinMask;
     DataBuffer db;
 
     // Sanity tests
@@ -27,9 +23,6 @@ void test_SendEngine_sendBit(void) {
     TEST_ASSERT_EQUAL(0b01101001, dataByte);
     dataByte = dataByte >> 1;
     TEST_ASSERT_EQUAL(0b00110100, dataByte);
-
-    port = portOutputRegister(digitalPinToPort(RXD_PIN));
-    pinMask = digitalPinToBitMask(RXD_PIN);
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
     TEST_ASSERT_EQUAL(2, eng.addByte(0x31));  // 00110001
@@ -127,7 +120,6 @@ void test_SendEngine_sendBit(void) {
 
 void test_SendEngine_startSending(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
 
     TEST_ASSERT_EQUAL(SEND_STATE_OFF, eng.xmitState);
     eng.startSending();
@@ -136,7 +128,6 @@ void test_SendEngine_startSending(void) {
 
 void test_SendEngine_stopSending(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
 
     eng.startSending();
     TEST_ASSERT_EQUAL(SEND_STATE_XMIT, eng.xmitState);
@@ -146,7 +137,6 @@ void test_SendEngine_stopSending(void) {
 
 void test_SendEngine_stopSendingOnIdle1(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
     DataBuffer db;
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
@@ -205,7 +195,6 @@ void test_SendEngine_stopSendingOnIdle1(void) {
 
 void test_SendEngine_stopSendingOnIdle2(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
     DataBuffer db;
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
@@ -247,7 +236,6 @@ void test_SendEngine_stopSendingOnIdle2(void) {
 
 void test_SendEngine_clearBuffer(void) {
     SendEngine eng(RXD_PIN);
-    uint8_t dataByte;
     DataBuffer db;
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001

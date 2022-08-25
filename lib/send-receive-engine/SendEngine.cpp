@@ -70,6 +70,8 @@ void SendEngine::sendBit() {
             _sendBitBuffer = BSC_CONTROL_IDLE;
             if ( _stopOnIdle ) {
                 xmitState = SEND_STATE_OFF;
+                // Set the output pin high ... idle state.
+                *_RXD_PORT |= _RXD_BIT;
                 return;
             }
             xmitState = SEND_STATE_IDLE;
