@@ -16,7 +16,7 @@ void tearDown(void) {
 
 
 void setup() {
-    delay(3000);
+    delay(4000);
 
     UNITY_BEGIN();
 }

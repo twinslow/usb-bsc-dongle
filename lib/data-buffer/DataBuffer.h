@@ -5,23 +5,37 @@
 
 #define DATABUFF_MAX_DATA   300
 
-class DataBuffer {
+class DataBufferReadOnly {
     public:
-        DataBuffer(void);
-        void clear(void);
+        DataBufferReadOnly(int size);
+        DataBufferReadOnly(const DataBufferReadOnly & dbsrc);
+        ~DataBufferReadOnly();
+        void loadData(uint8_t * data);
+        void loadData(int size, uint8_t * data);
         int read(uint8_t *data);
-        int readLast(void);
         int get(int idx);
         int getPos();
         int getLength();
+    protected:
+        int _allocSize;
+        volatile int _readPos;
+        volatile int _len;
+        volatile uint8_t * _buff;
+};
+
+class DataBuffer : public DataBufferReadOnly  {
+    public:
+        DataBuffer(void);
+        DataBuffer(const DataBuffer & dbsrc);
+        ~DataBuffer(void);
+        void clear(void);
+        int readLast(void);
         int write(uint8_t data);
         int setComplete();
         int isComplete();
+        DataBufferReadOnly makeReadOnlyCopy(void);
 
     private:
-        volatile int _readPos;
-        volatile int _len;
-        volatile uint8_t _buff[DATABUFF_MAX_DATA];
         volatile uint8_t _complete;
 };
 

@@ -26,7 +26,7 @@ class SendEngine {
         uint8_t getBitBufferLength();
         int getRemainingDataToBeSent(void);
         uint8_t _savedBitBuffer;
-        DataBuffer getDataBuffer(void);
+        DataBuffer & getDataBuffer(void);
         uint8_t lastBitSent;
 
     private:

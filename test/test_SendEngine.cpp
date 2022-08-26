@@ -16,7 +16,7 @@ void test_SendEngine_constructor(void) {
 void test_SendEngine_sendBit(void) {
     SendEngine eng(RXD_PIN);
     uint8_t dataByte;
-    DataBuffer db;
+    DataBuffer & db = eng.getDataBuffer();
 
     // Sanity tests
     dataByte = 0x69;
@@ -31,7 +31,7 @@ void test_SendEngine_sendBit(void) {
     TEST_ASSERT_EQUAL( SEND_STATE_XMIT, eng.xmitState );
 
     TEST_ASSERT_EQUAL( 0, eng.getBitBufferLength());
-    db = eng.getDataBuffer();
+    // db = eng.getDataBuffer();
     TEST_ASSERT_EQUAL( 2, db.getLength() );
     TEST_ASSERT_EQUAL( 0x69, db.get(0) );
     TEST_ASSERT_EQUAL( 0x31, db.get(1) );
@@ -43,7 +43,7 @@ void test_SendEngine_sendBit(void) {
     TEST_ASSERT_EQUAL( 1, eng.lastBitSent );
     TEST_ASSERT_EQUAL( 7, eng.getBitBufferLength());
 
-    db = eng.getDataBuffer();
+    // db = eng.getDataBuffer();
     TEST_ASSERT_EQUAL( 2, db.getLength() );
     TEST_ASSERT_EQUAL( 0x69, db.get(0) );
     TEST_ASSERT_EQUAL( 0x31, db.get(1) );
@@ -137,7 +137,7 @@ void test_SendEngine_stopSending(void) {
 
 void test_SendEngine_stopSendingOnIdle1(void) {
     SendEngine eng(RXD_PIN);
-    DataBuffer db;
+    DataBuffer & db = eng.getDataBuffer();
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
 
@@ -195,7 +195,6 @@ void test_SendEngine_stopSendingOnIdle1(void) {
 
 void test_SendEngine_stopSendingOnIdle2(void) {
     SendEngine eng(RXD_PIN);
-    DataBuffer db;
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
 
@@ -236,7 +235,7 @@ void test_SendEngine_stopSendingOnIdle2(void) {
 
 void test_SendEngine_clearBuffer(void) {
     SendEngine eng(RXD_PIN);
-    DataBuffer db;
+    DataBuffer & db = eng.getDataBuffer();
 
     TEST_ASSERT_EQUAL(1, eng.addByte(0x69));  // 01101001
 
@@ -255,7 +254,6 @@ void test_SendEngine_clearBuffer(void) {
     TEST_ASSERT_EQUAL( 0, eng.getRemainingDataToBeSent() );
     TEST_ASSERT_EQUAL( SEND_STATE_OFF, eng.xmitState );
 
-    db = eng.getDataBuffer();
     TEST_ASSERT_EQUAL( 0, db.getPos() );
     TEST_ASSERT_EQUAL( 0, db.getLength() );
 

@@ -51,7 +51,7 @@ uint8_t SendEngine::getBitBufferLength(void) {
     return _sendBitBufferLength;
 }
 
-DataBuffer SendEngine::getDataBuffer(void) {
+DataBuffer & SendEngine::getDataBuffer(void) {
     return _sendDataBuffer;
 }
 
