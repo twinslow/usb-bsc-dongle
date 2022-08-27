@@ -121,9 +121,16 @@ void ReceiveEngine::processBit(void) {
     if ( _receiveBitCounter != 8 )
         return;
 
-
     _latestByte = _inputBitBuffer;
     _receiveBitCounter = 0;
+
+
+    if ( receiveState == RECEIVE_STATE_PAD ) {
+        _receiveDataBuffer.write(_latestByte);
+        frameComplete();
+        receiveState = RECEIVE_STATE_IDLE;
+        return;
+    }
 
     if ( receiveState == RECEIVE_STATE_IDLE ||
          receiveState == RECEIVE_STATE_DATA ) {
@@ -190,13 +197,6 @@ void ReceiveEngine::processBit(void) {
         }
     }
 
-    if ( receiveState == RECEIVE_STATE_PAD ) {
-        _receiveDataBuffer.write(_latestByte);
-        frameComplete();
-        receiveState = RECEIVE_STATE_IDLE;
-        return;
-    }
-
     if ( receiveState == RECEIVE_STATE_DATA ) {
 
         if ( _latestByte == BSC_CONTROL_SYN ) {
@@ -214,18 +214,6 @@ void ReceiveEngine::processBit(void) {
 
         // Must be data ...
         _receiveDataBuffer.write(_latestByte);
-        return;
-    }
-
-    if ( receiveState == RECEIVE_STATE_BCC1 ) {
-        _receiveDataBuffer.write(_latestByte);
-        receiveState = RECEIVE_STATE_BCC2;
-        return;
-    }
-
-    if ( receiveState == RECEIVE_STATE_BCC2 ) {
-        _receiveDataBuffer.write(_latestByte);
-        receiveState = RECEIVE_STATE_PAD;
         return;
     }
 
@@ -269,9 +257,22 @@ void ReceiveEngine::processBit(void) {
         return;
     }
 
+    if ( receiveState == RECEIVE_STATE_BCC1 ) {
+        _receiveDataBuffer.write(_latestByte);
+        receiveState = RECEIVE_STATE_BCC2;
+        return;
+    }
+
+    if ( receiveState == RECEIVE_STATE_BCC2 ) {
+        _receiveDataBuffer.write(_latestByte);
+        receiveState = RECEIVE_STATE_PAD;
+        return;
+    }
+
+
 }
 
-void ReceiveEngine::frameComplete(void) {
+inline void ReceiveEngine::frameComplete(void) {
     // Clean up a previously saved frame if any.
     if ( _savedFrame )
         delete _savedFrame;

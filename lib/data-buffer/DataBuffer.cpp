@@ -2,41 +2,6 @@
 
 #include "DataBuffer.h"
 
-//#define DATA_BUFFER_DEBUG
-
-DataBufferReadOnly::DataBufferReadOnly(int size) {
-    _readPos = 0;
-    _allocSize = size;
-    _len = 0;
-#ifdef DATA_BUFFER_DEBUG
-    Serial.println("DataBufferReadOnly ... constructor called");
-#endif
-    if ( _allocSize > 0 )
-        _buff = (uint8_t *)malloc(_allocSize);
-}
-
-DataBufferReadOnly::DataBufferReadOnly(const DataBufferReadOnly & dbsrc) {
-#ifdef DATA_BUFFER_DEBUG
-    Serial.println("DataBufferReadOnly ... copy constructor called");
-#endif
-    _readPos = dbsrc._readPos;
-    _allocSize = dbsrc._allocSize;
-    _len = dbsrc._len;
-
-    if ( _allocSize > 0 ) {
-        _buff = (uint8_t *)malloc(_allocSize);
-        memcpy((void *)_buff, (void *)dbsrc._buff, _len);
-    }
-}
-
-DataBufferReadOnly::~DataBufferReadOnly() {
-#ifdef DATA_BUFFER_DEBUG
-    Serial.println("DataBufferReadOnly ... destructor called");
-#endif
-    if ( _allocSize > 0 )
-        free((void *)_buff);
-}
-
 void DataBufferReadOnly::loadData(uint8_t * data) {
 #ifdef DATA_BUFFER_DEBUG
     Serial.println("DataBufferReadOnly.loadData(data) started");
@@ -60,7 +25,6 @@ void DataBufferReadOnly::loadData(int size, uint8_t * data) {
 
 int DataBufferReadOnly::read(uint8_t *data)
 {
-    _readPos;
     if ( _len == 0 || _readPos >= _len )
         return -1;     // Fail, buffer empty or reached end.
 
@@ -112,21 +76,7 @@ DataBuffer::~DataBuffer() {
 #endif
 }
 
-void DataBuffer::clear()
-{
-    _complete = 0;
-    _len = 0;
-    _readPos = 0;
-}
 
-DataBufferReadOnly * DataBuffer::newReadOnlyCopy(void) {
-
-    DataBufferReadOnly * ro;
-
-    ro = new DataBufferReadOnly(_len);
-    ro->loadData((uint8_t *)_buff);
-    return ro;
-}
 
 int DataBuffer::readLast(void)
 {
@@ -136,14 +86,6 @@ int DataBuffer::readLast(void)
     return _buff[_len - 1];  // Return the last byte written
 }
 
-int DataBuffer::write(uint8_t data)
-{
-    if ( _len == DATABUFF_MAX_DATA - 1 )
-        return -1;     // Fail, buffer full.
-
-    _buff[_len] = data;
-    return ++(_len);
-}
 
 int DataBuffer::setComplete() {
     // Set the complete flag, providing we have data in the buffer.

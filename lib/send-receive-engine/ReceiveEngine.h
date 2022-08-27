@@ -48,7 +48,7 @@ class ReceiveEngine {
         volatile uint8_t     _frameComplete;
         volatile uint8_t     _inCharSync;
         DataBufferReadOnly * _savedFrame;
-        void                 frameComplete(void);
+        inline void                 frameComplete(void);
 
         volatile uint8_t *_TXD_PORT;
         uint8_t           _TXD_BIT;

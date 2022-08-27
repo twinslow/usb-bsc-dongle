@@ -32,7 +32,7 @@ void SendEngine::clearBuffer(void)
 
 uint8_t *SendEngine::getRxdPort(void)
 {
-    return _RXD_PORT;
+    return (uint8_t *)_RXD_PORT;
 }
 
 uint8_t SendEngine::getRxdBitMask(void) {
