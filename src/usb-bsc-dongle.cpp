@@ -160,7 +160,7 @@ void loop() {
         sendDebug(printbuff);
 
         //setDsrReady();
-
+        DataBufferReadOnly * frame;
         switch(cmd) {
             case CMD_WRITE:
                 sprintf(printbuff, "Executing command WRITE");
@@ -216,7 +216,7 @@ void loop() {
                 sendDebug(printbuff);
 
                 receiveEngine->waitReceivedFrameComplete();
-                DataBufferReadOnly * frame = receiveEngine->getSavedFrame();
+                frame = receiveEngine->getSavedFrame();
 
                 sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
                 sendDebug(printbuff);
@@ -235,8 +235,6 @@ void loop() {
             default:
                 sprintf(printbuff, "Unrecognized command code %d", cmd);
                 sendDebug(printbuff);
-
-                // Unrecognized command -- ignore
                 break;
         }
     }
@@ -279,6 +277,10 @@ void serialDriverInterruptRoutine(void) {
             // Read the state of the input data pin
             receiveEngine->getBit();
             clockPhase++;
+            // This is the call that may take some cycles to execute.
+            // Every 8th bit it is going to process the received byte and
+            // look at the byte value and set the state machine appropriately.
+            receiveEngine->processBit();
             break;
 
         case 3:
@@ -296,7 +298,6 @@ void serialDriverInterruptRoutine(void) {
 
 
 void setup() {
-    int i;
     volatile uint8_t *port;
     uint8_t mask1, mask2;
     char printbuff[256];
