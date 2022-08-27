@@ -168,15 +168,14 @@ void test_DataBuffer_makeReadOnlyCopy(void) {
     inByte = 'C';
     TEST_ASSERT_EQUAL(3, buff.write(inByte));
 
-    DataBufferReadOnly ro = buff.makeReadOnlyCopy();
+    DataBufferReadOnly * ro = buff.newReadOnlyCopy();
 
-    TEST_ASSERT_EQUAL(3, ro.getLength() );
-    TEST_ASSERT_EQUAL('A', ro.get(0));
-    TEST_ASSERT_EQUAL('B', ro.get(1));
-    TEST_ASSERT_EQUAL('C', ro.get(2));
-    TEST_ASSERT_EQUAL(-1, ro.get(3));
+    TEST_ASSERT_EQUAL(3, ro->getLength() );
+    TEST_ASSERT_EQUAL('A', ro->get(0));
+    TEST_ASSERT_EQUAL('B', ro->get(1));
+    TEST_ASSERT_EQUAL('C', ro->get(2));
+    TEST_ASSERT_EQUAL(-1, ro->get(3));
 }
-
 
 void test_DataBuffer() {
     RUN_TEST(test_DataBufferReadOnly_constructor);

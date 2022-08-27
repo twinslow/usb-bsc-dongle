@@ -86,21 +86,25 @@ void test_ReceiveEngine_processBit_STX_ETX(void) {
     TEST_ASSERT_EQUAL(RECEIVE_STATE_DATA, eng.receiveState);
     TEST_ASSERT_EQUAL(4, db->getLength());
     TEST_ASSERT_EQUAL(0xC2, db->get(3));
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
 
     eng.setBitBuffer(0x03);     // ETX
     eng.processBit();
     TEST_ASSERT_EQUAL(RECEIVE_STATE_BCC1, eng.receiveState);
     TEST_ASSERT_EQUAL(5, db->getLength());
     TEST_ASSERT_EQUAL(0x03, db->get(4));
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
 
     eng.setBitBuffer(0x44);     // first BCC byte
     eng.processBit();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
     TEST_ASSERT_EQUAL(RECEIVE_STATE_BCC2, eng.receiveState);
     TEST_ASSERT_EQUAL(6, db->getLength());
     TEST_ASSERT_EQUAL(0x44, db->get(5));
 
     eng.setBitBuffer(0x55);     // second BCC byte
     eng.processBit();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
     TEST_ASSERT_EQUAL(RECEIVE_STATE_PAD, eng.receiveState);
     TEST_ASSERT_EQUAL(7, db->getLength());
     TEST_ASSERT_EQUAL(0x55, db->get(6));
@@ -108,10 +112,27 @@ void test_ReceiveEngine_processBit_STX_ETX(void) {
     eng.setBitBuffer(0xFF);     // Pad byte
     eng.processBit();
     TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(8, db->getLength());
-    TEST_ASSERT_EQUAL(0xFF, db->get(7));
-
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_EQUAL(8, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(7));
+
+    // This should no longer be true!
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    // Buffer should be clear
+    TEST_ASSERT_EQUAL(0, db->getLength());
+
+    // Start receiving the next frame ...
+    eng.setBitBuffer(0x32);     // Sync for next frame
+    eng.processBit();
+    eng.setBitBuffer(0x02);     // STX
+    eng.processBit();
+
+    TEST_ASSERT_EQUAL(2, db->getLength());
+    TEST_ASSERT_EQUAL(0x32, db->get(0));
+    TEST_ASSERT_EQUAL(0x02, db->get(1));
 }
 
 void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
@@ -185,10 +206,15 @@ void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
     eng.setBitBuffer(0xFF);     // Pad byte
     eng.processBit();
     TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(10, db->getLength());
-    TEST_ASSERT_EQUAL(0xFF, db->get(9));
-
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    // Get the saved frame
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+
+    TEST_ASSERT_EQUAL(10, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(9));
+
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
 }
 
 void test_ReceiveEngine_processBit_ACK0(void) {
@@ -218,12 +244,20 @@ void test_ReceiveEngine_processBit_ACK0(void) {
 
     eng.setBitBuffer(0x70);     // ACK0
     eng.processBit();
-    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(3, db->getLength());
-    TEST_ASSERT_EQUAL(0x10, db->get(1));
-    TEST_ASSERT_EQUAL(0x70, db->get(2));
+    eng.setBitBuffer(0xFF);     // PAD
+    eng.processBit();
 
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
+    TEST_ASSERT_EQUAL(4, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0x10, completedFrame->get(1));
+    TEST_ASSERT_EQUAL(0x70, completedFrame->get(2));
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(3));
+
 }
 
 void test_ReceiveEngine_processBit_ACK1(void) {
@@ -253,12 +287,21 @@ void test_ReceiveEngine_processBit_ACK1(void) {
 
     eng.setBitBuffer(0x61);     // ACK1
     eng.processBit();
-    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(3, db->getLength());
-    TEST_ASSERT_EQUAL(0x10, db->get(1));
-    TEST_ASSERT_EQUAL(0x61, db->get(2));
+    eng.setBitBuffer(0xFF);     // PAD
+    eng.processBit();
 
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
+    TEST_ASSERT_EQUAL(4, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0x10, completedFrame->get(1));
+    TEST_ASSERT_EQUAL(0x61, completedFrame->get(2));
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(3));
+
+
 }
 
 void test_ReceiveEngine_processBit_NAK(void) {
@@ -283,11 +326,18 @@ void test_ReceiveEngine_processBit_NAK(void) {
     eng.setBitBuffer(0x3D);     // NAK
     eng.processBit();
 
-    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(2, db->getLength());
-    TEST_ASSERT_EQUAL(0x3D, db->get(1));
+    eng.setBitBuffer(0xFF);     // PAD
+    eng.processBit();
 
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
+    TEST_ASSERT_EQUAL(3, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0x3D, completedFrame->get(1));
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(2));
 }
 
 void test_ReceiveEngine_processBit_SYN_EOT(void) {
@@ -312,11 +362,18 @@ void test_ReceiveEngine_processBit_SYN_EOT(void) {
     eng.setBitBuffer(0x37);     // EOT
     eng.processBit();
 
-    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_EQUAL(2, db->getLength());
-    TEST_ASSERT_EQUAL(0x37, db->get(1));
+    eng.setBitBuffer(0xFF);     // PAD
+    eng.processBit();
 
     TEST_ASSERT_TRUE(eng.isFrameComplete());
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
+    TEST_ASSERT_EQUAL(3, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0x37, completedFrame->get(1));
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(2));
 }
 
 void test_ReceiveEngine_processBit_Status_Msg(void) {
@@ -395,10 +452,14 @@ void test_ReceiveEngine_processBit_Status_Msg(void) {
 
     eng.setBitBuffer(0xFF);     // PAD
     eng.processBit();
-    TEST_ASSERT_EQUAL(16, db->getLength());
-    TEST_ASSERT_EQUAL(0xFF, db->get(15));
 
-    TEST_ASSERT_TRUE(eng.isFrameComplete());
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
+
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
+    TEST_ASSERT_EQUAL(16, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(15));
+
 }
 
 void test_ReceiveEngine_processBit_Read_Partition1(void) {
@@ -472,11 +533,14 @@ void test_ReceiveEngine_processBit_Read_Partition1(void) {
 
     eng.setBitBuffer(0xFF);     // PAD
     eng.processBit();
-    TEST_ASSERT_EQUAL(15, db->getLength());
-    TEST_ASSERT_EQUAL(0xFF, db->get(14));
+
+    DataBufferReadOnly * completedFrame = eng.getSavedFrame();
+    TEST_ASSERT_FALSE(eng.isFrameComplete());
 
     TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
-    TEST_ASSERT_TRUE(eng.isFrameComplete());
+    TEST_ASSERT_EQUAL(15, completedFrame->getLength());
+    TEST_ASSERT_EQUAL(0xFF, completedFrame->get(14));
+
 }
 
 

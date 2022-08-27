@@ -33,7 +33,7 @@ class DataBuffer : public DataBufferReadOnly  {
         int write(uint8_t data);
         int setComplete();
         int isComplete();
-        DataBufferReadOnly makeReadOnlyCopy(void);
+        DataBufferReadOnly * newReadOnlyCopy(void);
 
     private:
         volatile uint8_t _complete;

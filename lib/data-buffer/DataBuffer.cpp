@@ -119,9 +119,12 @@ void DataBuffer::clear()
     _readPos = 0;
 }
 
-DataBufferReadOnly DataBuffer::makeReadOnlyCopy(void) {
-    DataBufferReadOnly ro(_len);
-    ro.loadData((uint8_t *)_buff);
+DataBufferReadOnly * DataBuffer::newReadOnlyCopy(void) {
+
+    DataBufferReadOnly * ro;
+
+    ro = new DataBufferReadOnly(_len);
+    ro->loadData((uint8_t *)_buff);
     return ro;
 }
 

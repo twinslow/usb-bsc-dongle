@@ -18,12 +18,17 @@ ReceiveEngine::ReceiveEngine(uint8_t txdPin, uint8_t ctsPin) {
 
     _inputBitBuffer = 0;        // This is not really required, however it is useful for
                                 // unit testing that we clear it initially.
+    _savedFrame = NULL;
+}
 
+ReceiveEngine::~ReceiveEngine(void) {
+    if ( _savedFrame )
+        delete _savedFrame;
 }
 
 uint8_t *ReceiveEngine::getTxdPort(void)
 {
-    return _TXD_PORT;
+    return (uint8_t *)_TXD_PORT;
 }
 
 uint8_t ReceiveEngine::getTxdBitMask(void) {
@@ -124,8 +129,11 @@ void ReceiveEngine::processBit(void) {
          receiveState == RECEIVE_STATE_DATA ) {
 
         // If latest character is a SYNC/IDLE then just discard.
-        if ( _latestByte == BSC_CONTROL_SYN )
+        if ( _latestByte == BSC_CONTROL_SYN ) {
+            if ( _receiveDataBuffer.getLength() == 0 )
+                _receiveDataBuffer.write(_latestByte);
             return;
+        }
 
         // If latest character is a DLE then set the flag for next time.
         if ( _latestByte == BSC_CONTROL_DLE ) {
@@ -151,7 +159,6 @@ void ReceiveEngine::processBit(void) {
              return;
         }
 
-
     }
 
     if ( receiveState == RECEIVE_STATE_IDLE ) {
@@ -161,7 +168,7 @@ void ReceiveEngine::processBit(void) {
             // We got a SYN DLE ACK0 or SYN DLE ACK1 sequence
             _receiveDataBuffer.write(BSC_CONTROL_DLE);
             _receiveDataBuffer.write(_latestByte);
-            _frameComplete = true;
+            receiveState = RECEIVE_STATE_PAD;
             return;
         }
 
@@ -178,13 +185,14 @@ void ReceiveEngine::processBit(void) {
              _latestByte == BSC_CONTROL_NAK ) {
             // We got a SYN EOT or SYN NAK sequence
             _receiveDataBuffer.write(_latestByte);
-            _frameComplete = true;
+            receiveState = RECEIVE_STATE_PAD;
             return;
         }
     }
 
     if ( receiveState == RECEIVE_STATE_PAD ) {
         _receiveDataBuffer.write(_latestByte);
+        frameComplete();
         receiveState = RECEIVE_STATE_IDLE;
         return;
     }
@@ -218,7 +226,6 @@ void ReceiveEngine::processBit(void) {
     if ( receiveState == RECEIVE_STATE_BCC2 ) {
         _receiveDataBuffer.write(_latestByte);
         receiveState = RECEIVE_STATE_PAD;
-        _frameComplete = true;
         return;
     }
 
@@ -235,7 +242,8 @@ void ReceiveEngine::processBit(void) {
         if ( _previousByteDLE && _latestByte == BSC_CONTROL_ENQ ) {
             _receiveDataBuffer.write(BSC_CONTROL_DLE);
             _receiveDataBuffer.write(_latestByte);
-            _frameComplete = true;
+            // _frameComplete = true;
+            frameComplete();
             _previousByteDLE = false;
             return;
         }
@@ -263,6 +271,24 @@ void ReceiveEngine::processBit(void) {
 
 }
 
+void ReceiveEngine::frameComplete(void) {
+    // Clean up a previously saved frame if any.
+    if ( _savedFrame )
+        delete _savedFrame;
+
+    _savedFrame = _receiveDataBuffer.newReadOnlyCopy();
+
+    // Clear out data buffer for the next frame.
+    _receiveDataBuffer.clear();
+    // Set the flag.
+    _frameComplete = true;
+}
+
+DataBufferReadOnly * ReceiveEngine::getSavedFrame(void) {
+    _frameComplete = false;
+    return _savedFrame;
+}
+
 void ReceiveEngine::startReceiving() {
     digitalWrite(_ctsPin, LOW);
     _inCharSync = false;
@@ -281,81 +307,3 @@ int ReceiveEngine::getFrameDataByte(int idx) {
     return _receiveDataBuffer.get(idx);
 }
 
-/*
-#define SEND_STATE_IDLE               1
-#define SEND_STATE_XMIT               2
-#define SEND_STATE_TRANSPARENT_XMIT   3
-#define SEND_STATE_BCC1               4
-#define SEND_STATE_BCC2               5
-
-#define SEND_STATE_EOT                10
-
-
-
-
-
-uint8_t SendEngine::xmitStateMachine(int data1, int data2) {
-
-
-    switch(xmitState) {
-        case SEND_STATE_IDLE:
-            if ( data1 == BSC_CONTROL_SYN && data2 == BSC_CONTROL_EOT ) {
-                xmitState = SEND_STATE_EOT;
-                return xmitState;
-            } else if ( data1 == BSC_CONTROL_SYN &&
-                 ( data2 == BSC_CONTROL_SOH || data2 == BSC_CONTROL_STX ) ) {
-                xmitState = SEND_STATE_XMIT;
-                return xmitState;
-            } else if ( data1 == BSC_CONTROL_DLE && data2 == BSC_CONTROL_STX ) {
-                xmitState = SEND_STATE_TRANSPARENT_XMIT;
-                return xmitState;
-            }
-            break;
-
-        case SEND_STATE_XMIT:
-            if ( data1 == BSC_CONTROL_DLE && data2 == BSC_CONTROL_STX ) {
-                xmitState = SEND_STATE_TRANSPARENT_XMIT;
-                return xmitState;
-            } else if ( data2 == BSC_CONTROL_ENQ ) {
-                xmitState = SEND_STATE_IDLE;       // Transmission is being terminated.
-                                                  // Receiving station should send NAK
-                return xmitState;
-            } else if ( data2 == BSC_CONTROL_ETX ||
-                      data2 == BSC_CONTROL_ETB ) {
-                xmitState = SEND_STATE_BCC1;
-                return xmitState;
-            }
-            break;
-
-        case SEND_STATE_TRANSPARENT_XMIT:
-            if ( data1 == BSC_CONTROL_DLE ) {
-                if ( data2 == BSC_CONTROL_ENQ ) {
-                    xmitState = SEND_STATE_IDLE;
-                    return xmitState;
-                } else if ( data2 == BSC_CONTROL_ETB ||
-                            data2 == BSC_CONTROL_ITB ||
-                            data2 == BSC_CONTROL_ETX ) {
-                    xmitState = SEND_STATE_BCC1;
-                    return xmitState;
-                }
-            }
-            break;
-
-        case SEND_STATE_BCC1:
-            xmitState = SEND_STATE_BCC2;
-            return xmitState;
-
-        case SEND_STATE_BCC2:
-            xmitState = SEND_STATE_IDLE;
-            return xmitState;
-
-        default:
-            break;
-    }
-
-    return 0;     // state has not changed.
-}
-
-
-
- */

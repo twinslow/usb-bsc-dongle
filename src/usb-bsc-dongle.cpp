@@ -216,16 +216,17 @@ void loop() {
                 sendDebug(printbuff);
 
                 receiveEngine->waitReceivedFrameComplete();
+                DataBufferReadOnly * frame = receiveEngine->getSavedFrame();
 
-                sprintf(printbuff, "Got response -- sending frame of length %d back to host", receiveEngine->getFrameLength() );
+                sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
                 sendDebug(printbuff);
 
                 // Get data and send back to host.
                 Serial.write(CMD_WRITE);
-                Serial.write( (receiveEngine->getFrameLength() >> 8) & 0xff );
-                Serial.write( receiveEngine->getFrameLength() & 0xff );
-                for ( i=0; i<receiveEngine->getFrameLength(); i++) {
-                    Serial.write(receiveEngine->getFrameDataByte(i));
+                Serial.write( (frame->getLength() >> 8) & 0xff );
+                Serial.write( frame->getLength() & 0xff );
+                for ( i=0; i<frame->getLength(); i++) {
+                    Serial.write(frame->get(i));
                 }
 
                 sendDebug("READ command completed");
