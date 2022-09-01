@@ -120,7 +120,8 @@ long periodCounter;
 #define CMD_READ    0x02
 #define CMD_POLL    0x05
 #define CMD_DEBUG   0x09
-
+#define CMD_READERROR 0x82
+#define CMD_RESET   0x20
 
 void sendDebug(char *str) {
     int len,x;
@@ -134,23 +135,52 @@ void sendDebug(char *str) {
 
 uint8_t dsrReady = false;
 
-void setDsrReady() {
-    if ( !dsrReady ) {
+void setDsrNotReady()
+{
+        digitalWrite(dsrPin, HIGH); // Active low
+        digitalWrite(cdPin, HIGH); // Active low
+        digitalWrite(ctsPin, HIGH); // Active low
+        digitalWrite(rxdPin, HIGH); // Idle state for the data line we are sending on.
+        dsrReady = false;
+}
+
+void setDsrReady()
+{
+    if ( !dsrReady ) {        
         digitalWrite(dsrPin, LOW);    // Active low
         delay(500);
-        digitalWrite(cdPin, LOW);     // Active low
+        // This is going to be my temp ring indicator.
+        digitalWrite(cdPin, LOW); //Ring!
+        delay(2000);
+        digitalWrite(cdPin, HIGH); // Silent
+        delay(4000);
+        digitalWrite(cdPin, LOW); // Ring! short ring because we going to pretend an answer.
+        delay(500);
+        digitalWrite(cdPin, HIGH); // Silent after answer
+        //
+        // ctsPin now also drives CD (temp)
+        digitalWrite(ctsPin, LOW);
         delay(500);
         digitalWrite(rxdPin, HIGH);    // Idle state for the data line we are sending on.
         dsrReady = true;
     }
 }
 
+void deviceReset() {
+    setDsrNotReady();
+    delay(2000);
+    setDsrReady();
+}
+
 void loop() {
+    static unsigned long lastDataReceivedTime = millis();
     int cmd, cmdlen, data, i;
     char printbuff[256];
 
     if ( Serial && Serial.available() ) {
+        //setDsrReady();
         cmd = Serial.read();
+        lastDataReceivedTime = millis();
         if ( cmd >= 0 ) {
             cmdlen = Serial.read();
             cmdlen <<= 8;
@@ -162,6 +192,12 @@ void loop() {
         //setDsrReady();
         DataBufferReadOnly * frame;
         switch(cmd) {
+            case CMD_RESET:
+                sprintf(printbuff, "Executing command RESET");
+                sendDebug(printbuff);
+                deviceReset();
+                break;
+
             case CMD_WRITE:
                 sprintf(printbuff, "Executing command WRITE");
                 sendDebug(printbuff);
@@ -215,21 +251,27 @@ void loop() {
                 sprintf(printbuff, "Executing command READ");
                 sendDebug(printbuff);
 
-                receiveEngine->waitReceivedFrameComplete();
-                frame = receiveEngine->getSavedFrame();
+                if ( receiveEngine->waitReceivedFrameComplete(2000) < 0 ) {
+                    sendDebug("READ command timeout");
+                    Serial.write(CMD_READERROR);
+                    Serial.write((byte)0);
+                    Serial.write((byte)0);
+                } else {
+                    frame = receiveEngine->getSavedFrame();
 
-                sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
-                sendDebug(printbuff);
+                    sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
+                    sendDebug(printbuff);
 
-                // Get data and send back to host.
-                Serial.write(CMD_WRITE);
-                Serial.write( (frame->getLength() >> 8) & 0xff );
-                Serial.write( frame->getLength() & 0xff );
-                for ( i=0; i<frame->getLength(); i++) {
-                    Serial.write(frame->get(i));
+                    // Get data and send back to host.
+                    Serial.write(CMD_WRITE);
+                    Serial.write( (frame->getLength() >> 8) & 0xff );
+                    Serial.write( frame->getLength() & 0xff );
+                    for ( i=0; i<frame->getLength(); i++) {
+                        Serial.write(frame->get(i));
+                    }
+
+                    sendDebug("READ command completed");
                 }
-
-                sendDebug("READ command completed");
                 break;
 
             default:
@@ -237,6 +279,10 @@ void loop() {
                 sendDebug(printbuff);
                 break;
         }
+    } else if ( Serial && !Serial.available() ) {
+        // if ( millis() - lastDataReceivedTime > 10000 ) {
+        //     deviceReset();
+        // }
     }
 }
 
@@ -359,9 +405,8 @@ void setup() {
     oneSecondPeriodCount = (long)1000000 / interruptPeriod;
     periodCounter = 0;
 
-    digitalWrite(cdPin, HIGH);     // Active low
-    digitalWrite(dsrPin, HIGH);    // Active low
-    digitalWrite(ctsPin, HIGH);    // Active low
+    setDsrNotReady();
+    delay(1000);
 
     Timer1.initialize( interruptPeriod );  // 52 us for 9600 bps.
     Timer1.attachInterrupt(serialDriverInterruptRoutine);

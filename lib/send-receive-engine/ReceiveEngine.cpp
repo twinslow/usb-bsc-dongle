@@ -296,8 +296,14 @@ void ReceiveEngine::startReceiving() {
     receiveState = RECEIVE_STATE_OUT_OF_SYNC;
 }
 
-void ReceiveEngine::waitReceivedFrameComplete() {
-    while ( !_frameComplete );
+int ReceiveEngine::waitReceivedFrameComplete(int timeoutMs = 3000) {
+    unsigned long startTime = millis();
+    unsigned long completeByTime = startTime + timeoutMs;
+    while ( !_frameComplete ) {
+        if ( millis() > completeByTime ) 
+            return -1;
+    }
+    return millis() - startTime;
 }
 
 int ReceiveEngine::getFrameLength() {

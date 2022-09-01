@@ -24,7 +24,7 @@ class ReceiveEngine {
         void processBit(void);
         void startReceiving(void);
         void stopReceiving(void);
-        void waitReceivedFrameComplete(void);
+        int waitReceivedFrameComplete(int timeoutMs);
         int getFrameLength(void);
         int getFrameDataByte(int idx);
         uint8_t *getTxdPort(void);
