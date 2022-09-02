@@ -146,7 +146,7 @@ void setDsrNotReady()
 
 void setDsrReady()
 {
-    if ( !dsrReady ) {        
+    if ( !dsrReady ) {
         digitalWrite(dsrPin, LOW);    // Active low
         delay(500);
         // This is going to be my temp ring indicator.
@@ -202,8 +202,9 @@ void loop() {
                 sprintf(printbuff, "Executing command WRITE");
                 sendDebug(printbuff);
                 sendEngine->clearBuffer();
-                for ( i = 0; i < 3; i++ )
-                    sendEngine->addByte(BSC_CONTROL_SYN);
+                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+                sendEngine->addByte(BSC_CONTROL_SYN);
                 for (i = 0; i < cmdlen; i++) {
                     data = Serial.read();
                     if (data >= 0) {
@@ -230,8 +231,9 @@ void loop() {
                 sprintf(printbuff, "Executing command POLL");
                 sendDebug(printbuff);
                 sendEngine->clearBuffer();
-                for (i = 0; i < 3; i++)
-                    sendEngine->addByte(BSC_CONTROL_SYN);
+                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+                sendEngine->addByte(BSC_CONTROL_SYN);
                 for (i = 0; i < cmdlen; i++) {
                     data = Serial.read();
                     if (data >= 0)

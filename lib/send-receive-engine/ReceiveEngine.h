@@ -12,6 +12,7 @@
 #define RECEIVE_STATE_BCC2              5
 #define RECEIVE_STATE_PAD               6
 
+//#define RECEIVE_ENGINE_DEBUG
 
 
 class ReceiveEngine {
@@ -37,24 +38,30 @@ class ReceiveEngine {
         uint8_t receiveState;
         DataBuffer * getDataBuffer(void);
         bool isFrameComplete(void);
-        DataBufferReadOnly * getSavedFrame(void);
+        DataBuffer * getSavedFrame(void);
 
     private:
-        DataBuffer           _receiveDataBuffer;
+        // Two data buffers that we alternate for receiving and processing data
+        DataBuffer           _dataBuffers[2];
+        // The data buffer we are currently using for receiving data
+        DataBuffer *         _receiveDataBuffer;
+        // The data buffer we have received a complete frame (or poll, ack etc.)
+        DataBuffer *         _savedFrame;
+        // An indicator as to which data buffer is the current working buffer (pointed
+        // to by _receiveDataBuffer).
+        int                  _workingDataBuffer = 0;
+
         uint8_t              _inputBitBuffer;
         uint8_t              _receiveBitCounter;
         uint8_t              _latestByte;
         uint8_t              _previousByteDLE;
         volatile uint8_t     _frameComplete;
         volatile uint8_t     _inCharSync;
-        DataBufferReadOnly * _savedFrame;
-        inline void                 frameComplete(void);
-
+        inline void          frameComplete(void);
         volatile uint8_t *_TXD_PORT;
         uint8_t           _TXD_BIT;
         uint8_t           _TXD_BITMASK;
         uint8_t           _ctsPin;
-
 
 };
 

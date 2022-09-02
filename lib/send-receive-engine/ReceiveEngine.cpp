@@ -19,11 +19,23 @@ ReceiveEngine::ReceiveEngine(uint8_t txdPin, uint8_t ctsPin) {
     _inputBitBuffer = 0;        // This is not really required, however it is useful for
                                 // unit testing that we clear it initially.
     _savedFrame = NULL;
+    _workingDataBuffer = 0;
+    _receiveDataBuffer = &(_dataBuffers[0]);
+
+    // _dataBuffers[0] = DataBuffer();
+    // _dataBuffers[1] = DataBuffer();
+
+#ifdef RECEIVE_ENGINE_DEBUG
+    Serial.print("_dataBuffer[0] = 0x");
+    Serial.print((unsigned)&(_dataBuffers[0]), HEX);
+    Serial.print(", _dataBuffer[1] = 0x");
+    Serial.print((unsigned)&(_dataBuffers[1]), HEX);
+    Serial.println();
+#endif
+
 }
 
 ReceiveEngine::~ReceiveEngine(void) {
-    if ( _savedFrame )
-        delete _savedFrame;
 }
 
 uint8_t *ReceiveEngine::getTxdPort(void)
@@ -57,7 +69,7 @@ void ReceiveEngine::setBitBuffer(uint8_t data) {
 }
 
 DataBuffer * ReceiveEngine::getDataBuffer(void) {
-    return &_receiveDataBuffer;
+    return _receiveDataBuffer;
 }
 
 bool ReceiveEngine::isFrameComplete(void) {
@@ -109,7 +121,7 @@ void ReceiveEngine::processBit(void) {
         if ( _inputBitBuffer == BSC_CONTROL_SYN ) {
             _inCharSync = true;
             receiveState = RECEIVE_STATE_IDLE;
-            _receiveDataBuffer.write(_inputBitBuffer);
+            _receiveDataBuffer->write(_inputBitBuffer);
             _receiveBitCounter = 0;
         }
         // We are done
@@ -126,7 +138,7 @@ void ReceiveEngine::processBit(void) {
 
 
     if ( receiveState == RECEIVE_STATE_PAD ) {
-        _receiveDataBuffer.write(_latestByte);
+        _receiveDataBuffer->write(_latestByte);
         frameComplete();
         receiveState = RECEIVE_STATE_IDLE;
         return;
@@ -137,8 +149,8 @@ void ReceiveEngine::processBit(void) {
 
         // If latest character is a SYNC/IDLE then just discard.
         if ( _latestByte == BSC_CONTROL_SYN ) {
-            if ( _receiveDataBuffer.getLength() == 0 )
-                _receiveDataBuffer.write(_latestByte);
+            if ( _receiveDataBuffer->getLength() == 0 )
+                _receiveDataBuffer->write(_latestByte);
             return;
         }
 
@@ -152,8 +164,8 @@ void ReceiveEngine::processBit(void) {
         // into transparent mode.
         if ( _previousByteDLE && _latestByte == BSC_CONTROL_STX ) {
             receiveState = RECEIVE_STATE_TRANSPARENT_DATA;
-            _receiveDataBuffer.write(BSC_CONTROL_DLE);
-            _receiveDataBuffer.write(BSC_CONTROL_STX);
+            _receiveDataBuffer->write(BSC_CONTROL_DLE);
+            _receiveDataBuffer->write(BSC_CONTROL_STX);
             _previousByteDLE = false;
             return;
         }
@@ -161,7 +173,7 @@ void ReceiveEngine::processBit(void) {
         if ( _latestByte == BSC_CONTROL_STX ||
              _latestByte == BSC_CONTROL_SOH ) {
              receiveState = RECEIVE_STATE_DATA;
-             _receiveDataBuffer.write(_latestByte);
+             _receiveDataBuffer->write(_latestByte);
             _previousByteDLE = false;
              return;
         }
@@ -173,8 +185,8 @@ void ReceiveEngine::processBit(void) {
         if ( _previousByteDLE &&
              ( _latestByte == BSC_CONTROL_ACK0 || _latestByte == BSC_CONTROL_ACK1 ) ) {
             // We got a SYN DLE ACK0 or SYN DLE ACK1 sequence
-            _receiveDataBuffer.write(BSC_CONTROL_DLE);
-            _receiveDataBuffer.write(_latestByte);
+            _receiveDataBuffer->write(BSC_CONTROL_DLE);
+            _receiveDataBuffer->write(_latestByte);
             receiveState = RECEIVE_STATE_PAD;
             return;
         }
@@ -182,7 +194,7 @@ void ReceiveEngine::processBit(void) {
         _previousByteDLE = false;
 
         if ( _latestByte == BSC_CONTROL_SYN &&
-             _receiveDataBuffer.readLast() == BSC_CONTROL_SYN ) {
+             _receiveDataBuffer->readLast() == BSC_CONTROL_SYN ) {
             // If we a SYN character, following a prior SYN then we can just discard it.
             // character in buffer.
             return;
@@ -191,7 +203,7 @@ void ReceiveEngine::processBit(void) {
         if ( _latestByte == BSC_CONTROL_EOT ||
              _latestByte == BSC_CONTROL_NAK ) {
             // We got a SYN EOT or SYN NAK sequence
-            _receiveDataBuffer.write(_latestByte);
+            _receiveDataBuffer->write(_latestByte);
             receiveState = RECEIVE_STATE_PAD;
             return;
         }
@@ -207,13 +219,13 @@ void ReceiveEngine::processBit(void) {
         // Do we have a character terminating the block...
         if ( _latestByte == BSC_CONTROL_ETB ||
              _latestByte == BSC_CONTROL_ETX ) {
-            _receiveDataBuffer.write(_latestByte);
+            _receiveDataBuffer->write(_latestByte);
             receiveState = RECEIVE_STATE_BCC1;
             return;
         }
 
         // Must be data ...
-        _receiveDataBuffer.write(_latestByte);
+        _receiveDataBuffer->write(_latestByte);
         return;
     }
 
@@ -222,14 +234,14 @@ void ReceiveEngine::processBit(void) {
         // If we received two DLE's sequence, then we add the second
         // DLE to the buffer, discarding the first.
         if ( _previousByteDLE && _latestByte == BSC_CONTROL_DLE ) {
-            _receiveDataBuffer.write(BSC_CONTROL_DLE);
+            _receiveDataBuffer->write(BSC_CONTROL_DLE);
             _previousByteDLE = false;
             return;
         }
 
         if ( _previousByteDLE && _latestByte == BSC_CONTROL_ENQ ) {
-            _receiveDataBuffer.write(BSC_CONTROL_DLE);
-            _receiveDataBuffer.write(_latestByte);
+            _receiveDataBuffer->write(BSC_CONTROL_DLE);
+            _receiveDataBuffer->write(_latestByte);
             // _frameComplete = true;
             frameComplete();
             _previousByteDLE = false;
@@ -240,8 +252,8 @@ void ReceiveEngine::processBit(void) {
               _latestByte == BSC_CONTROL_ITB ||
               _latestByte == BSC_CONTROL_ETX ||
               _latestByte == BSC_CONTROL_ETB ) ) {
-            _receiveDataBuffer.write(BSC_CONTROL_DLE);
-            _receiveDataBuffer.write(_latestByte);
+            _receiveDataBuffer->write(BSC_CONTROL_DLE);
+            _receiveDataBuffer->write(_latestByte);
             receiveState = RECEIVE_STATE_BCC1;
             return;
         }
@@ -253,18 +265,18 @@ void ReceiveEngine::processBit(void) {
         }
 
         // Otherwise ... just add this byte to the receive buffer.
-        _receiveDataBuffer.write(_latestByte);
+        _receiveDataBuffer->write(_latestByte);
         return;
     }
 
     if ( receiveState == RECEIVE_STATE_BCC1 ) {
-        _receiveDataBuffer.write(_latestByte);
+        _receiveDataBuffer->write(_latestByte);
         receiveState = RECEIVE_STATE_BCC2;
         return;
     }
 
     if ( receiveState == RECEIVE_STATE_BCC2 ) {
-        _receiveDataBuffer.write(_latestByte);
+        _receiveDataBuffer->write(_latestByte);
         receiveState = RECEIVE_STATE_PAD;
         return;
     }
@@ -273,19 +285,30 @@ void ReceiveEngine::processBit(void) {
 }
 
 inline void ReceiveEngine::frameComplete(void) {
-    // Clean up a previously saved frame if any.
-    if ( _savedFrame )
-        delete _savedFrame;
-
-    _savedFrame = _receiveDataBuffer.newReadOnlyCopy();
-
+    _savedFrame = _receiveDataBuffer;
+    if ( _workingDataBuffer == 0 ) {
+        _workingDataBuffer = 1;
+        _receiveDataBuffer = &(_receiveDataBuffer[1]);
+    } else {
+        _workingDataBuffer = 0;
+        _receiveDataBuffer = &(_receiveDataBuffer[0]);
+    }
+#ifdef RECEIVE_ENGINE_DEBUG
+    Serial.print("ReceiveEngine.frameComplete() - _workingDataBuffer now = ");
+    Serial.println(_workingDataBuffer);
+    Serial.print("ReceiveEngine.frameComplete() -_savedFrame now set to 0x");
+    Serial.print((unsigned)_savedFrame, HEX);
+    Serial.print(", _receiveDataBuffer now set to 0x");
+    Serial.print((unsigned)_receiveDataBuffer, HEX);
+    Serial.println();
+#endif
     // Clear out data buffer for the next frame.
-    _receiveDataBuffer.clear();
+    _receiveDataBuffer->clear();
     // Set the flag.
     _frameComplete = true;
 }
 
-DataBufferReadOnly * ReceiveEngine::getSavedFrame(void) {
+DataBuffer * ReceiveEngine::getSavedFrame(void) {
     _frameComplete = false;
     return _savedFrame;
 }
@@ -300,17 +323,18 @@ int ReceiveEngine::waitReceivedFrameComplete(int timeoutMs = 3000) {
     unsigned long startTime = millis();
     unsigned long completeByTime = startTime + timeoutMs;
     while ( !_frameComplete ) {
-        if ( millis() > completeByTime ) 
+        if ( millis() > completeByTime )
             return -1;
+        delay(1);
     }
     return millis() - startTime;
 }
 
 int ReceiveEngine::getFrameLength() {
-    return _receiveDataBuffer.getLength();
+    return _receiveDataBuffer->getLength();
 }
 
 int ReceiveEngine::getFrameDataByte(int idx) {
-    return _receiveDataBuffer.get(idx);
+    return _receiveDataBuffer->get(idx);
 }
 
