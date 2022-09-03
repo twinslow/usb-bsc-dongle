@@ -142,6 +142,9 @@ void setDsrNotReady()
         digitalWrite(cdPin, HIGH); // Active low
         digitalWrite(ctsPin, HIGH); // Active low
         digitalWrite(rxdPin, HIGH); // Idle state for the data line we are sending on.
+
+        digitalWrite(txclkPin, LOW);
+        digitalWrite(rxclkPin, LOW);
         dsrReady = false;
 }
 
@@ -164,6 +167,9 @@ void setDsrReady()
         delay(500);
         digitalWrite(rxdPin, HIGH);    // Idle state for the data line we are sending on.
         dsrReady = true;
+
+        digitalWrite(txclkPin, LOW);
+        digitalWrite(rxclkPin, LOW);
     }
 }
 
@@ -214,6 +220,7 @@ unsigned long getAndProcessCommand() {
                     sendEngine->addByte(data);
                 }
             }
+            sendEngine->addByte(BSC_CONTROL_PAD);
             sprintf(printbuff, "About to start sending %d bytes of data for WRITE",
                 sendEngine->getRemainingDataToBeSent());
             sendDebug(printbuff);
@@ -241,6 +248,7 @@ unsigned long getAndProcessCommand() {
                     sendEngine->addByte(data);
                 }
             }
+            sendEngine->addByte(BSC_CONTROL_PAD);
             sendEngine->startSending();
             sendEngine->stopSendingOnIdle();
             sendEngine->waitForSendIdle();
