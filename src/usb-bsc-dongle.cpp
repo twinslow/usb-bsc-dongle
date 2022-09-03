@@ -122,6 +122,7 @@ long periodCounter;
 #define CMD_DEBUG   0x09
 #define CMD_READERROR 0x82
 #define CMD_RESET   0x20
+#define CMD_TEXTMODE 'T'
 
 void sendDebug(char *str) {
     int len,x;
@@ -172,115 +173,123 @@ void deviceReset() {
     setDsrReady();
 }
 
-void loop() {
-    static unsigned long lastDataReceivedTime = millis();
+unsigned long getAndProcessCommand() {
     int cmd, cmdlen, data, i;
+    unsigned long lastDataReceivedTime;
     char printbuff[256];
 
-    if ( Serial && Serial.available() ) {
-        //setDsrReady();
-        cmd = Serial.read();
-        lastDataReceivedTime = millis();
-        if ( cmd >= 0 ) {
-            cmdlen = Serial.read();
-            cmdlen <<= 8;
-            cmdlen |= Serial.read();
-        }
-        sprintf(printbuff, "Got command: %d, length %d", cmd, cmdlen);
-        sendDebug(printbuff);
+    //setDsrReady();
+    cmd = Serial.read();
+    lastDataReceivedTime = millis();
+    if ( cmd >= 0 ) {
+        cmdlen = Serial.read();
+        cmdlen <<= 8;
+        cmdlen |= Serial.read();
+    }
+    sprintf(printbuff, "Got command: %d, length %d", cmd, cmdlen);
+    sendDebug(printbuff);
 
-        //setDsrReady();
-        DataBufferReadOnly * frame;
-        switch(cmd) {
-            case CMD_RESET:
-                sprintf(printbuff, "Executing command RESET");
-                sendDebug(printbuff);
-                deviceReset();
-                break;
+    //setDsrReady();
+    DataBufferReadOnly * frame;
+    switch(cmd) {
 
-            case CMD_WRITE:
-                sprintf(printbuff, "Executing command WRITE");
-                sendDebug(printbuff);
-                sendEngine->clearBuffer();
-                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
-                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
-                sendEngine->addByte(BSC_CONTROL_SYN);
-                for (i = 0; i < cmdlen; i++) {
-                    data = Serial.read();
-                    if (data >= 0) {
-                        sprintf(printbuff, "     Adding byte %d to send-buffer", data);
-                        sendDebug(printbuff);
-                        sendEngine->addByte(data);
-                    }
-                }
-                sprintf(printbuff, "About to start sending %d bytes of data for WRITE",
-                    sendEngine->getRemainingDataToBeSent());
-                sendDebug(printbuff);
+        case CMD_RESET:
+            sprintf(printbuff, "Executing command RESET");
+            sendDebug(printbuff);
+            deviceReset();
+            break;
 
-                sendEngine->startSending();
-                sendEngine->stopSendingOnIdle();
-                sendEngine->waitForSendIdle();
-
-                //delay(1000);
-                sprintf(printbuff, "WRITE command completed with %d bytes of data remaining to be sent",
-                     sendEngine->getRemainingDataToBeSent());
-                sendDebug(printbuff);
-                break;
-
-            case CMD_POLL:
-                sprintf(printbuff, "Executing command POLL");
-                sendDebug(printbuff);
-                sendEngine->clearBuffer();
-                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
-                sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
-                sendEngine->addByte(BSC_CONTROL_SYN);
-                for (i = 0; i < cmdlen; i++) {
-                    data = Serial.read();
-                    if (data >= 0)
-                    {
-                        sendEngine->addByte(data);
-                    }
-                }
-                sendEngine->startSending();
-                sendEngine->stopSendingOnIdle();
-                sendEngine->waitForSendIdle();
-
-                sendDebug("POLL command completed");
-                break;
-            case CMD_READ:
-                receiveEngine->startReceiving();
-                //sendEngine->stopSending();
-                sprintf(printbuff, "Executing command READ");
-                sendDebug(printbuff);
-
-                if ( receiveEngine->waitReceivedFrameComplete(2000) < 0 ) {
-                    sendDebug("READ command timeout");
-                    Serial.write(CMD_READERROR);
-                    Serial.write((byte)0);
-                    Serial.write((byte)0);
-                } else {
-                    frame = receiveEngine->getSavedFrame();
-
-                    sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
+        case CMD_WRITE:
+            sprintf(printbuff, "Executing command WRITE");
+            sendDebug(printbuff);
+            sendEngine->clearBuffer();
+            sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+            sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+            sendEngine->addByte(BSC_CONTROL_SYN);
+            for (i = 0; i < cmdlen; i++) {
+                data = Serial.read();
+                if (data >= 0) {
+                    sprintf(printbuff, "     Adding byte %d to send-buffer", data);
                     sendDebug(printbuff);
-
-                    // Get data and send back to host.
-                    Serial.write(CMD_WRITE);
-                    Serial.write( (frame->getLength() >> 8) & 0xff );
-                    Serial.write( frame->getLength() & 0xff );
-                    for ( i=0; i<frame->getLength(); i++) {
-                        Serial.write(frame->get(i));
-                    }
-
-                    sendDebug("READ command completed");
+                    sendEngine->addByte(data);
                 }
-                break;
+            }
+            sprintf(printbuff, "About to start sending %d bytes of data for WRITE",
+                sendEngine->getRemainingDataToBeSent());
+            sendDebug(printbuff);
 
-            default:
-                sprintf(printbuff, "Unrecognized command code %d", cmd);
+            sendEngine->startSending();
+            sendEngine->stopSendingOnIdle();
+            sendEngine->waitForSendIdle();
+
+            //delay(1000);
+            sprintf(printbuff, "WRITE command completed with %d bytes of data remaining to be sent",
+                    sendEngine->getRemainingDataToBeSent());
+            sendDebug(printbuff);
+            break;
+
+        case CMD_POLL:
+            sprintf(printbuff, "Executing command POLL");
+            sendDebug(printbuff);
+            sendEngine->clearBuffer();
+            sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+            sendEngine->addByte(BSC_CONTROL_LEADING_PAD);
+            sendEngine->addByte(BSC_CONTROL_SYN);
+            for (i = 0; i < cmdlen; i++) {
+                data = Serial.read();
+                if (data >= 0) {
+                    sendEngine->addByte(data);
+                }
+            }
+            sendEngine->startSending();
+            sendEngine->stopSendingOnIdle();
+            sendEngine->waitForSendIdle();
+
+            sendDebug("POLL command completed");
+            break;
+
+        case CMD_READ:
+            receiveEngine->startReceiving();
+            //sendEngine->stopSending();
+            sprintf(printbuff, "Executing command READ");
+            sendDebug(printbuff);
+
+            if ( receiveEngine->waitReceivedFrameComplete(2000) < 0 ) {
+                sendDebug("READ command timeout");
+                Serial.write(CMD_READERROR);
+                Serial.write((byte)0);
+                Serial.write((byte)0);
+            } else {
+                frame = receiveEngine->getSavedFrame();
+
+                sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
                 sendDebug(printbuff);
-                break;
-        }
+
+                // Get data and send back to host.
+                Serial.write(CMD_WRITE);
+                Serial.write( (frame->getLength() >> 8) & 0xff );
+                Serial.write( frame->getLength() & 0xff );
+                for ( i=0; i<frame->getLength(); i++) {
+                    Serial.write(frame->get(i));
+                }
+
+                sendDebug("READ command completed");
+            }
+            break;
+
+        default:
+            sprintf(printbuff, "Unrecognized command code %d", cmd);
+            sendDebug(printbuff);
+            break;
+    }
+    return lastDataReceivedTime;
+}
+
+void loop() {
+    static unsigned long lastDataReceivedTime = millis();
+
+    if ( Serial && Serial.available() ) {
+        lastDataReceivedTime = getAndProcessCommand();
     } else if ( Serial && !Serial.available() ) {
         // if ( millis() - lastDataReceivedTime > 10000 ) {
         //     deviceReset();
