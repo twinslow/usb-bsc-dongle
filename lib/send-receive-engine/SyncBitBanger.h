@@ -36,7 +36,8 @@ class SyncBitBanger {
 
         // Interrupt stuff must be static
 
-        static SyncBitBanger *syncBitBangerInstance;
+        static SyncBitBanger * syncBitBangerInstance;
+        static unsigned int interruptCallCount;
         static void serialDriverInterruptRoutine(void);
 
         inline void interruptAssertClockLines() {
@@ -44,6 +45,7 @@ class SyncBitBanger {
                 // Assert output clock for data being received (which is on DTE txdPin)
                 *RXCLK_PORT |= RXCLK_BIT;
                 *TXCLK_PORT |= TXCLK_BIT;
+                interruptCallCount++;
         }
 
         inline void interruptDeassertClockLines() {

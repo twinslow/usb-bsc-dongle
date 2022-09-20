@@ -1,10 +1,12 @@
 #include "SyncBitBanger.h"
 
 SyncBitBanger * SyncBitBanger::syncBitBangerInstance = NULL;
+unsigned int SyncBitBanger::interruptCallCount = 0;
 
 // Static interrupt routine
 void SyncBitBanger::serialDriverInterruptRoutine(void) {
     static uint8_t clockPhase = 0;
+
     switch(clockPhase) {
         case 0:
             // Put the output data pin in the correct state
@@ -168,10 +170,33 @@ void SyncBitBanger::init() {
     delay(1000);
 
     syncBitBangerInstance = this;
+    interruptCallCount = 0;
 
-    Timer1.initialize( interruptPeriod );  // 52 us for 9600 bps.
+    Serial.print(F("DEBUG: Setting up interrupt routine with interval of "));
+    Serial.print(interruptPeriod);
+    Serial.println(F(" micro seconds."));
+
+    Timer1.initialize(interruptPeriod); // 52 us for 9600 bps.
     Timer1.attachInterrupt(serialDriverInterruptRoutine);
 
+    delay(1000);
+    unsigned int callCount = interruptCallCount;
+    Serial.print(F("After one second the interrupt routine has been called "));
+    Serial.print(callCount);
+    Serial.println(F(" times."));
+
+    Serial.print(F("DEBUG: RXCLK_PORT          = 0x"));
+    Serial.println((unsigned int)RXCLK_PORT, 16);
+    Serial.print(F("DEBUG: RXCLK_BIT           = 0x"));
+    Serial.println((unsigned int)RXCLK_BIT, 16);
+    Serial.print(F("DEBUG: RXCLK_BITMASK       = 0x"));
+    Serial.println((unsigned int)RXCLK_BITMASK, 16);
+    Serial.print(F("DEBUG: TXCLK_PORT          = 0x"));
+    Serial.println((unsigned int)TXCLK_PORT, 16);
+    Serial.print(F("DEBUG: TXCLK_BIT           = 0x"));
+    Serial.println((unsigned int)TXCLK_BIT, 16);
+    Serial.print(F("DEBUG: TXCLK_BITMASK       = 0x"));
+    Serial.println((unsigned int)TXCLK_BITMASK, 16);
 }
 
 SyncControl::SyncControl(SyncBitBanger * instance) {
