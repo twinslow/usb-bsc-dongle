@@ -56,6 +56,8 @@ class DataBufferReadOnly {
         int get(int idx);
         int getPos();
         int getLength();
+        void * getData();
+
     protected:
         int _allocSize;
         volatile int _readPos;

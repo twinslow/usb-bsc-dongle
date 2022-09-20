@@ -11,14 +11,17 @@
 class SendEngine {
     public:
         SendEngine(uint8_t rxdPin);
+        virtual ~SendEngine();
         void sendBit(void);
         volatile uint8_t xmitState = SEND_STATE_IDLE;
         int addByte(int data);
         void clearBuffer(void);
-        void startSending();
-        void stopSending();
-        void stopSendingOnIdle();
-        void waitForSendIdle();
+
+        virtual void startSending();
+        virtual void stopSending();
+        virtual void stopSendingOnIdle();
+        virtual void waitForSendIdle();
+
         uint8_t *getRxdPort();
         uint8_t getRxdBitMask();
         uint8_t getRxdBitNotMask();

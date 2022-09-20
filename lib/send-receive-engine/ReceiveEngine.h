@@ -18,14 +18,14 @@
 class ReceiveEngine {
     public:
         ReceiveEngine(uint8_t txdPin, uint8_t ctsPin);    // Transmit pin of the DTE ... our receive pin.
-        ~ReceiveEngine(void);
+        virtual ~ReceiveEngine(void);
         void getBit(uint8_t val);
         void getBit(void);
         void setBit(uint8_t bit);
         void processBit(void);
-        void startReceiving(void);
+        virtual void startReceiving(void);
         void stopReceiving(void);
-        int waitReceivedFrameComplete(int timeoutMs);
+        virtual int waitReceivedFrameComplete(int timeoutMs);
         int getFrameLength(void);
         int getFrameDataByte(int idx);
         uint8_t *getTxdPort(void);
@@ -38,9 +38,9 @@ class ReceiveEngine {
         uint8_t receiveState;
         DataBuffer * getDataBuffer(void);
         bool isFrameComplete(void);
-        DataBuffer * getSavedFrame(void);
+        virtual DataBuffer * getSavedFrame(void);
 
-    private:
+    protected:
         // Two data buffers that we alternate for receiving and processing data
         DataBuffer           _dataBuffers[2];
         // The data buffer we are currently using for receiving data
@@ -51,6 +51,7 @@ class ReceiveEngine {
         // to by _receiveDataBuffer).
         int                  _workingDataBuffer = 0;
 
+    private:
         uint8_t              _inputBitBuffer;
         uint8_t              _receiveBitCounter;
         uint8_t              _latestByte;

@@ -190,7 +190,6 @@ void test_ReceiveEngine_processBit_STX_ETX(void) {
 
 void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
 
     eng.startReceiving();
 
@@ -201,7 +200,6 @@ void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
     runProcessBit(eng);
     TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
     TEST_ASSERT_TRUE(eng.getInCharSync());
-    db = eng.getDataBuffer();
 
     TEST_ASSERT_EQUAL(0x32, eng.getFrameDataByte(0));
     TEST_ASSERT_EQUAL(1, eng.getFrameLength());
@@ -272,9 +270,6 @@ void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
 
 void test_ReceiveEngine_processBit_ACK0(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
-
-    db = eng.getDataBuffer();
 
     eng.startReceiving();
 
@@ -315,9 +310,6 @@ void test_ReceiveEngine_processBit_ACK0(void) {
 
 void test_ReceiveEngine_processBit_ACK1(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
-
-    db = eng.getDataBuffer();
 
     eng.startReceiving();
 
@@ -359,9 +351,6 @@ void test_ReceiveEngine_processBit_ACK1(void) {
 
 void test_ReceiveEngine_processBit_NAK(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
-
-    db = eng.getDataBuffer();
 
     eng.startReceiving();
 
@@ -395,9 +384,6 @@ void test_ReceiveEngine_processBit_NAK(void) {
 
 void test_ReceiveEngine_processBit_SYN_EOT(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
-
-    db = eng.getDataBuffer();
 
     eng.startReceiving();
 
@@ -509,6 +495,7 @@ void test_ReceiveEngine_processBit_Status_Msg(void) {
     unsigned long startTime = micros();
     DataBufferReadOnly * rocopy = db->newReadOnlyCopy();
     unsigned long callTime = micros() - startTime;
+    delete rocopy;
 
     sprintf(functionTiming.printbuff,
         "It took %lu microseconds to make a read only copy of the data buffer.",
@@ -548,9 +535,6 @@ void test_ReceiveEngine_processBit_Status_Msg(void) {
 
 void test_ReceiveEngine_processBit_Read_Partition1(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
-    DataBuffer * db;
-
-    db = eng.getDataBuffer();
 
     eng.startReceiving();
 

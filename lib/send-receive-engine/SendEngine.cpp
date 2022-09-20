@@ -19,6 +19,9 @@ SendEngine::SendEngine(uint8_t rxdPin) {
     _stopOnIdle = false;
 }
 
+SendEngine::~SendEngine() {
+}
+
 void SendEngine::clearBuffer(void)
 {
     // Initialize/clear data buffers

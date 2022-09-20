@@ -48,6 +48,9 @@ int DataBufferReadOnly::getPos(void) {
     return _readPos;
 }
 
+void * DataBufferReadOnly::getData(void) {
+    return (void *)_buff;
+}
 
 //-----------------------------------------------------------------------------------
 

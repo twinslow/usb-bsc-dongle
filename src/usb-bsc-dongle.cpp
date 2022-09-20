@@ -83,14 +83,90 @@
 
 #include <Arduino.h>
 #include <TimerOne.h>
+
 #include "bsc_protocol.h"
 
 #include "DataBuffer.h"
 #include "SendEngine.h"
 #include "ReceiveEngine.h"
+#include "CommandProcessor.h"
+#include "SyncBitBanger.h"
+
+//CommandProcessorBinary * commandProcessor;
+SyncBitBanger * syncBitBanger;
+//SyncControl * syncControl;
+CommandProcessorFrontEnd * commandProcFE;
+
+#define printbuff commandProcFE->getPrintbuff()
+#define sendDebug(x) commandProcFE->sendDebugToHost(x)
+
+void loop() {
+    static unsigned long lastDataReceivedTime = millis();
+    //Serial.println("DEBUG: loop() starting");
+
+    if ( Serial ) {
+//        Serial.println(F("DEBUG: About to call commandProcessor front-end."));
+        lastDataReceivedTime = commandProcFE->getAndProcessCommand();
+    }
+}
 
 
+void setup() {
+    volatile uint8_t *port;
+    uint8_t mask1, mask2;
+    char debugbuff[80];
 
+
+    // Open serial communications and wait for port to open:
+    Serial.begin(57600);        // This should be faster than the DCE speed being implemented.
+                                // The synchronous DCE can send and receive faster than the input async port, if
+                                // this is a real serial link and not a native USB device.
+                                // For USB native serial port on Leonardo the speed is irrelevant -- as it
+                                // native USB.
+    while (!Serial) {
+      ; // wait for serial port to connect. Needed for native USB port only
+    }
+
+    Serial.println(F("DEBUG: Serial port is available."));
+
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    Serial.println(F("DEBUG: About to setup bit-banger."));
+    syncBitBanger = new SyncBitBanger();
+    // Initialize ... this will start up the interrupt routine for
+    // sending and receiving bits
+    syncBitBanger->init();
+    Serial.println(F("DEBUG: Bit-banger init() completed."));
+
+    commandProcFE = new CommandProcessorFrontEnd(syncBitBanger);
+    Serial.println(F("DEBUG: commandProcFE instantiated."));
+
+
+    syncBitBanger->setDsrReady();
+    Serial.println(F("Completed setDsrReady() processing."));
+
+    sprintf(debugbuff, "txclkPin=%d", syncBitBanger->txclkPin);
+    Serial.println(debugbuff);
+
+    port = portOutputRegister(digitalPinToPort(syncBitBanger->txclkPin));
+
+    sprintf(debugbuff, "port=%ld", (long int) port);
+    Serial.println(debugbuff);
+
+    mask1 = digitalPinToBitMask(syncBitBanger->txclkPin);
+    sprintf(debugbuff, "mask1=%d", mask1);
+    Serial.println(debugbuff);
+
+    mask2  = ~digitalPinToBitMask(syncBitBanger->txclkPin);
+    sprintf(debugbuff, "mask2=%d", mask2);
+    Serial.println(debugbuff);
+
+    return;
+}
+
+
+//--------------------------- Retired code ----------------------------
+/*
 uint8_t interruptCycleState;
 
 #define CYCLE_STATE_STARTBIT 0
@@ -115,7 +191,10 @@ ReceiveEngine   *receiveEngine;
 long interruptPeriod;
 long oneSecondPeriodCount;
 long periodCounter;
+*/
 
+
+/*
 #define CMD_WRITE   0x01
 #define CMD_READ    0x02
 #define CMD_POLL    0x05
@@ -123,17 +202,9 @@ long periodCounter;
 #define CMD_READERROR 0x82
 #define CMD_RESET   0x20
 #define CMD_TEXTMODE 'T'
+*/
 
-void sendDebug(char *str) {
-    int len,x;
-    len = strlen(str);
-    Serial.write(CMD_DEBUG);
-    Serial.write(len>>8 & 0xff);
-    Serial.write(len & 0xff);
-    for ( x=0; x<len; x++ )
-        Serial.write(str[x]);
-}
-
+/*
 uint8_t dsrReady = false;
 
 void setDsrNotReady()
@@ -178,6 +249,11 @@ void deviceReset() {
     delay(2000);
     setDsrReady();
 }
+
+
+*/
+
+/*
 
 unsigned long getAndProcessCommand() {
     int cmd, cmdlen, data, i;
@@ -292,19 +368,8 @@ unsigned long getAndProcessCommand() {
     }
     return lastDataReceivedTime;
 }
-
-void loop() {
-    static unsigned long lastDataReceivedTime = millis();
-
-    if ( Serial && Serial.available() ) {
-        lastDataReceivedTime = getAndProcessCommand();
-    } else if ( Serial && !Serial.available() ) {
-        // if ( millis() - lastDataReceivedTime > 10000 ) {
-        //     deviceReset();
-        // }
-    }
-}
-
+*/
+/*
 inline void interruptAssertClockLines() {
         // Assert output clock for data being sent (which is on DTE rxdPin)
         // Assert output clock for data being received (which is on DTE txdPin)
@@ -360,139 +425,5 @@ void serialDriverInterruptRoutine(void) {
 //        periodCounter = 0;
 //    }
 }
-
-
-void setup() {
-    volatile uint8_t *port;
-    uint8_t mask1, mask2;
-    char printbuff[256];
-
-    // RS232 pin names are from the DTE point of view.
-    // Therefore, for example, the DTE transmit data pin is an input to the
-    // DCE. Likewise, the DTE receive data pin is an output from the DCE.
-
-    ctsPin = 8;         // Output
-    dsrPin = 6;         // Output
-    dtrPin = 10;        // Input
-    rtsPin = 2;         // Input
-    cdPin  = 5;         // Output
-    riPin  = 0;         // Output - not used.
-    rxclkPin = 14;      // Output
-    txclkPin = 16;      // Output
-    dteclkPin = 15;     // Input tx data clock from DTE -- Not used, but assigned and wired.
-    txdPin = 3;         // Input tx data
-    rxdPin = 9;         // Output rx data
-
-    bitRate = 2400;     // Bit rate. 19,200 bps is about the max for
-                        // bit banging the synchronous serial DCE.
-    //bitRate = 50;
-
-    pinMode(ctsPin, OUTPUT);
-    pinMode(dsrPin, OUTPUT);
-    pinMode(dtrPin, INPUT);
-    pinMode(cdPin,OUTPUT);
-    //pinMode(riPin, OUTPUT);  // This is not being used because
-                               // we don't have enough output channels
-                               // on the 3 MAX232 ICs.
-
-    pinMode(dteclkPin, INPUT);
-
-    pinMode(rxdPin, OUTPUT);      // This is the output data to the MAX232
-    if (debugDataPin)
-        pinMode(debugDataPin, OUTPUT);   // This is just for logic analyzer debugging.
-    pinMode(txdPin, INPUT_PULLUP);
-    pinMode(txclkPin, OUTPUT);
-    pinMode(rxclkPin, OUTPUT);
-
-    interruptCycleState = CYCLE_STATE_STARTBIT;
-
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    RXCLK_PORT     = portOutputRegister(digitalPinToPort(rxclkPin));
-    RXCLK_BIT      = digitalPinToBitMask(rxclkPin);
-    RXCLK_BITMASK  = ~digitalPinToBitMask(rxclkPin);
-
-    TXCLK_PORT     = portOutputRegister(digitalPinToPort(txclkPin));
-    TXCLK_BIT      = digitalPinToBitMask(txclkPin);
-    TXCLK_BITMASK  = ~digitalPinToBitMask(txclkPin);
-
-    sendEngine = new SendEngine(rxdPin);
-    receiveEngine = new ReceiveEngine(txdPin, ctsPin);
-
-    // Set our interval timer.
-    interruptPeriod = (long)1000000 / bitRate / 4;
-    oneSecondPeriodCount = (long)1000000 / interruptPeriod;
-    periodCounter = 0;
-
-    setDsrNotReady();
-    delay(1000);
-
-    Timer1.initialize( interruptPeriod );  // 52 us for 9600 bps.
-    Timer1.attachInterrupt(serialDriverInterruptRoutine);
-
-    digitalWrite(rxdPin, HIGH);
-
-
-    // Open serial communications and wait for port to open:
-    Serial.begin(57600);        // This should be faster than the DCE speed being implemented.
-                                // The synchronous DCE can send and receive faster than the input async port, if
-                                // this is a real serial link and not a native USB device.
-                                // For USB native serial port on Leonardo the speed is irrelevant -- as it
-                                // native USB.
-    while (!Serial) {
-      ; // wait for serial port to connect. Needed for native USB port only
-    }
-
-    sprintf(printbuff, "Interrupt period is %ld microseconds", interruptPeriod);
-    sendDebug(printbuff);
-
-    setDsrReady();
-    sendDebug("Completed setDsrReady() processing.");
-
-    sprintf(printbuff, "txclkPin=%d", txclkPin);
-    sendDebug(printbuff);
-
-    port = portOutputRegister(digitalPinToPort(txclkPin));
-
-    sprintf(printbuff, "port=%ld", (long int) port);
-    sendDebug(printbuff);
-
-    mask1 = digitalPinToBitMask(txclkPin);
-    sprintf(printbuff, "mask1=%d", mask1);
-    sendDebug(printbuff);
-
-    mask2  = ~digitalPinToBitMask(txclkPin);
-    sprintf(printbuff, "mask2=%d", mask2);
-    sendDebug(printbuff);
-/*
-    while(true) {
-
-        sendEngine->clearBuffer();
-        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
-//        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
-//        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
-
-        for ( i = 0; i < 4; i++ )
-            sendEngine->addByte((uint8_t)BSC_CONTROL_SYN);
-
-        sendEngine->addByte((uint8_t)BSC_CONTROL_STX);
-        sendEngine->addByte((uint8_t)0xC1);
-        sendEngine->addByte((uint8_t)0xC2);
-        sendEngine->addByte((uint8_t)0xC3);
-        sendEngine->addByte((uint8_t)BSC_CONTROL_ETX);
-        sendEngine->addByte((uint8_t)0xC9);
-        sendEngine->addByte((uint8_t)0xC8);
-        sendEngine->addByte((uint8_t)BSC_CONTROL_PAD);
-
-        sendEngine->startSending();
-//        delay(100);
-        sendEngine->waitForSendIdle();
-        sendEngine->stopSending();
-
-        delay(1000);
-    }
 */
-    return;
-
-}
 
