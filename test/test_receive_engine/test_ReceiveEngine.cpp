@@ -74,17 +74,66 @@ void test_ReceiveEngine_getBit(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
 
     eng.getBit(0x01);
-    TEST_ASSERT_EQUAL(0b00000001, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b100000000, eng.getBitBuffer());
     eng.getBit(0x00);
-    TEST_ASSERT_EQUAL(0b00000010, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b010000000, eng.getBitBuffer());
     eng.getBit(0x00);
-    TEST_ASSERT_EQUAL(0b00000100, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b001000000, eng.getBitBuffer());
     eng.getBit(0x01);
-    TEST_ASSERT_EQUAL(0b00001001, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b100100000, eng.getBitBuffer());
     eng.getBit(0x01);
-    TEST_ASSERT_EQUAL(0b00010011, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b110010000, eng.getBitBuffer());
     eng.getBit(0x00);
-    TEST_ASSERT_EQUAL(0b00100110, eng.getBitBuffer());
+    TEST_ASSERT_EQUAL(0b011001000, eng.getBitBuffer());
+}
+
+void test_ReceiveEngine_getBit_processBit(void) {
+    ReceiveEngine eng(TXD_PIN, CTS_PIN);
+
+    // This is the pad character.
+    for ( int x = 0; x < 8; x++ )
+        eng.getBit(0x01);
+
+    TEST_ASSERT_EQUAL(0xFF, eng._inputBitBuffer);
+
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    TEST_ASSERT_EQUAL(0xFF, eng._inputBitBuffer);
+
+    // Now feed in the bits of the sync character 0x32, LSB first
+    eng.getBit(0);
+    TEST_ASSERT_EQUAL(0b01111111, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(1);
+    TEST_ASSERT_EQUAL(0b10111111, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(0);
+    TEST_ASSERT_EQUAL(0b01011111, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(0);
+    TEST_ASSERT_EQUAL(0b00101111, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(1);
+    TEST_ASSERT_EQUAL(0b10010111, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(1);
+    TEST_ASSERT_EQUAL(0b11001011, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(0);
+    TEST_ASSERT_EQUAL(0b01100101, eng._inputBitBuffer);
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_OUT_OF_SYNC, eng.receiveState);
+    eng.getBit(0);
+    TEST_ASSERT_EQUAL(0b00110010, eng._inputBitBuffer);
+
+    eng.processBit();
+    TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
 }
 
 void test_ReceiveEngine_processBit_outOfSync(void) {
@@ -108,6 +157,7 @@ void test_ReceiveEngine_processBit_outOfSync(void) {
 void test_ReceiveEngine_processBit_STX_ETX(void) {
     ReceiveEngine eng(TXD_PIN, CTS_PIN);
 
+    // TEST_MESSAGE("Starting test_ReceiveEngine_processBit_STX_ETX");
     eng.startReceiving();
 
     eng.setBitBuffer(0x11);
@@ -118,11 +168,13 @@ void test_ReceiveEngine_processBit_STX_ETX(void) {
     TEST_ASSERT_EQUAL(RECEIVE_STATE_IDLE, eng.receiveState);
     TEST_ASSERT_TRUE(eng.getInCharSync());
 
+    // TEST_MESSAGE("In test_ReceiveEngine_processBit_STX_ETX ** 1");
     TEST_ASSERT_EQUAL(0x32, eng.getFrameDataByte(0));
     TEST_ASSERT_EQUAL(1, eng.getFrameLength());
 
     eng.setBitBuffer(0x02);     // STX
     runProcessBit(eng);
+    TEST_MESSAGE("In test_ReceiveEngine_processBit_STX_ETX ** 1.2");
 
     TEST_ASSERT_EQUAL(RECEIVE_STATE_DATA, eng.receiveState);
     TEST_ASSERT_EQUAL(2, eng.getFrameLength());
@@ -182,10 +234,10 @@ void test_ReceiveEngine_processBit_STX_ETX(void) {
     runProcessBit(eng);
     eng.setBitBuffer(0x02);     // STX
     runProcessBit(eng);
-
     TEST_ASSERT_EQUAL(2, eng.getFrameLength());
     TEST_ASSERT_EQUAL(0x32, eng.getFrameDataByte(0));
     TEST_ASSERT_EQUAL(0x02, eng.getFrameDataByte(1));
+    TEST_MESSAGE("In test_ReceiveEngine_processBit_STX_ETX ** 5");
 }
 
 void test_ReceiveEngine_processBit_SOH_STX_ETX(void) {
@@ -617,7 +669,8 @@ void test_ReceiveEngine() {
     resetFunctionTime();
 
     RUN_TEST(test_ReceiveEngine_constructor);
-    RUN_TEST(test_ReceiveEngine_getBit);
+    // RUN_TEST(test_ReceiveEngine_getBit);
+    RUN_TEST(test_ReceiveEngine_getBit_processBit);
     RUN_TEST(test_ReceiveEngine_processBit_outOfSync);
     RUN_TEST(test_ReceiveEngine_processBit_STX_ETX);
     RUN_TEST(test_ReceiveEngine_processBit_SOH_STX_ETX);
@@ -628,6 +681,6 @@ void test_ReceiveEngine() {
     RUN_TEST(test_ReceiveEngine_processBit_Status_Msg);
     RUN_TEST(test_ReceiveEngine_processBit_Read_Partition1);
 
-    reportFunctionTime("eng.processBit()");
+    reportFunctionTime((char *)"eng.processBit()");
 }
 

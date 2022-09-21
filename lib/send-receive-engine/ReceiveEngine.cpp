@@ -96,8 +96,8 @@ bool ReceiveEngine::isFrameComplete(void) {
 // This routine is timing critical. It needs to be invoked before de-asserting the DTE-transmit
 // clock line. The processBit() routine can be invoked afterwards and is not timing critical.
 void ReceiveEngine::getBit(uint8_t inputBit) {
-    inputBit &= 0x01;
-    _inputBitBuffer <<= 1; // Shift to left
+    inputBit = inputBit ? 0x80 : 0x00;
+    _inputBitBuffer >>= 1; // Shift to right
     _inputBitBuffer |= inputBit;   // Setting most significant bit when line was high.
     _receiveBitCounter++;
 }
