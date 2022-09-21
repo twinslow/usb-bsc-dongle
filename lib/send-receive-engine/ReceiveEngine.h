@@ -39,6 +39,7 @@ class ReceiveEngine {
         DataBuffer * getDataBuffer(void);
         bool isFrameComplete(void);
         virtual DataBuffer * getSavedFrame(void);
+        uint8_t _inputBitBuffer;
 
     protected:
         // Two data buffers that we alternate for receiving and processing data
@@ -52,11 +53,10 @@ class ReceiveEngine {
         int                  _workingDataBuffer = 0;
 
     private:
-        uint8_t              _inputBitBuffer;
         uint8_t              _receiveBitCounter;
         uint8_t              _latestByte;
         uint8_t              _previousByteDLE;
-        volatile uint8_t     _frameComplete;
+        volatile bool        _frameComplete;
         volatile uint8_t     _inCharSync;
         inline void          frameComplete(void);
         volatile uint8_t *_TXD_PORT;

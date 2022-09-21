@@ -361,8 +361,10 @@ unsigned long CommandProcessorText::getAndProcessCommand() {
             } else {
                 execReset();
                 execSelect();
+                delay(50);
                 execWrite();
                 execRead();
+                delay(50);
             }
             break;
 
@@ -481,6 +483,7 @@ void CommandProcessorText::execWrite() {
     this->sendEngine->addByte(0xC5);
     this->sendEngine->addByte(0xD3);
     this->sendEngine->addByte(0xD3);
+    this->sendEngine->addByte(0xD6);
     this->sendEngine->addByte(0x40);
     this->sendEngine->addByte(0xE6);
     this->sendEngine->addByte(0xD6);
@@ -489,6 +492,7 @@ void CommandProcessorText::execWrite() {
     this->sendEngine->addByte(0xC4);
     this->sendEngine->addByte(0x40);
     this->sendEngine->addByte(0x40);
+    // this->sendEngine->addByte(0x40);
 
     this->sendEngine->addByte(0x13);        // IC
 
@@ -500,6 +504,7 @@ void CommandProcessorText::execWrite() {
     this->sendEngine->addByte(BSC_CONTROL_PAD);
 
     sendEngine->startSending();
+    receiveEngine->startReceiving();
     sendEngine->stopSendingOnIdle();
     sendEngine->waitForSendIdle();
 
@@ -508,11 +513,17 @@ void CommandProcessorText::execWrite() {
 }
 
 void CommandProcessorText::execRead() {
-    receiveEngine->startReceiving();
-    sendDebug("Reading response ...");
+    //receiveEngine->startReceiving();
+    //sendDebug("Reading response ...");
 
     if ( receiveEngine->waitReceivedFrameComplete(RECEIVE_TIMEOUT) < 0 ) {
-        // sendDebug("READ command timeout");
+        DataBuffer * frame = receiveEngine->getDataBuffer();
+        this->useSerial->print(F("Error: Timeout. We have "));
+        this->useSerial->print(frame->getLength());
+        this->useSerial->print(F(" bytes of data received, receive state is "));
+        this->useSerial->println((int)receiveEngine->receiveState);
+        this->useSerial->print(F("Error: _inputBitBuffer = "));
+        this->useSerial->println(receiveEngine->_inputBitBuffer, 1);
         sendResponse("Error: Response timeout");
     } else {
         //DataBuffer * frame = receiveEngine->getSavedFrame();

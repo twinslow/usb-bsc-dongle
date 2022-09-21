@@ -17,17 +17,17 @@ void SyncBitBanger::serialDriverInterruptRoutine(void) {
         case 1:
             // Set the output clock lines to high
             syncBitBangerInstance->interruptAssertClockLines();
+            // Read the state of the input data pin
+            syncBitBangerInstance->receiveEngine->getBit();
             clockPhase++;
             break;
 
         case 2:
-            // Read the state of the input data pin
-            syncBitBangerInstance->receiveEngine->getBit();
-            clockPhase++;
             // This is the call that may take some cycles to execute.
             // Every 8th bit it is going to process the received byte and
             // look at the byte value and set the state machine appropriately.
             syncBitBangerInstance->receiveEngine->processBit();
+            clockPhase++;
             break;
 
         case 3:
@@ -63,7 +63,7 @@ SyncBitBanger::SyncBitBanger() {
     txdPin = 3;         // Input tx data
     rxdPin = 9;         // Output rx data
 
-    bitRate = 2400;     // Bit rate. 19,200 bps is about the max for
+    bitRate = 300;      // Bit rate. 19,200 bps is about the max for
                         // bit banging the synchronous serial DCE.
 
     dsrReady = false;
