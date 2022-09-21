@@ -220,6 +220,10 @@ CommandProcessorText::CommandProcessorText(
     SendEngine * sEng,
     ReceiveEngine * rEng,
     SyncControl * syncCntrl  ) : CommandProcessor(sEng, rEng, syncControl) {
+    addressCuPoll = 0x40;
+    addressCuSelect = 0x60;
+    addressDevice = 0x40;
+    addressSet = true;
 }
 
 CommandProcessorText::~CommandProcessorText() {
@@ -504,7 +508,6 @@ void CommandProcessorText::execWrite() {
     this->sendEngine->addByte(BSC_CONTROL_PAD);
 
     sendEngine->startSending();
-    receiveEngine->startReceiving();
     sendEngine->stopSendingOnIdle();
     sendEngine->waitForSendIdle();
 
@@ -513,8 +516,8 @@ void CommandProcessorText::execWrite() {
 }
 
 void CommandProcessorText::execRead() {
-    //receiveEngine->startReceiving();
-    //sendDebug("Reading response ...");
+    receiveEngine->startReceiving();
+    sendDebug("Reading response ...");
 
     if ( receiveEngine->waitReceivedFrameComplete(RECEIVE_TIMEOUT) < 0 ) {
         DataBuffer * frame = receiveEngine->getDataBuffer();
@@ -526,8 +529,19 @@ void CommandProcessorText::execRead() {
         this->useSerial->println(receiveEngine->_inputBitBuffer, 1);
         sendResponse("Error: Response timeout");
     } else {
-        //DataBuffer * frame = receiveEngine->getSavedFrame();
-        sendResponse("Response received, but I'm keeping it a secret.");
+        DataBuffer * frame = receiveEngine->getSavedFrame();
+        this->useSerial->println(F("Response received, "));
+        this->useSerial->print(frame->getLength());
+        this->useSerial->println(F(" bytes of received data follows ..."));
+        for ( int x = 0; x < frame->getLength(); x++ ) {
+            if ( frame->get(x) < 16 )
+                this->useSerial->print("0x0");
+            else
+                this->useSerial->print("0x");
+            this->useSerial->print(frame->get(x), 16);
+            this->useSerial->print(' ');
+        }
+        this->useSerial->println(F("**END**"));
     }
 
 }

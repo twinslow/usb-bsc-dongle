@@ -314,9 +314,10 @@ DataBuffer * ReceiveEngine::getSavedFrame(void) {
 }
 
 void ReceiveEngine::startReceiving() {
-    digitalWrite(_ctsPin, LOW);
     _inCharSync = false;
+    _receiveDataBuffer->clear();
     receiveState = RECEIVE_STATE_OUT_OF_SYNC;
+    digitalWrite(_ctsPin, LOW);
 }
 
 int ReceiveEngine::waitReceivedFrameComplete(int timeoutMs = 3000) {
@@ -328,6 +329,7 @@ int ReceiveEngine::waitReceivedFrameComplete(int timeoutMs = 3000) {
         delay(1);
     }
     return millis() - startTime;
+    digitalWrite(_ctsPin, HIGH);
 }
 
 int ReceiveEngine::getFrameLength() {
