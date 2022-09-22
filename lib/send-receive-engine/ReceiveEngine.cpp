@@ -93,29 +93,14 @@ bool ReceiveEngine::isFrameComplete(void) {
  * EBCDIC / = 0x61
  */
 
-// This routine is timing critical. It needs to be invoked before de-asserting the DTE-transmit
-// clock line. The processBit() routine can be invoked afterwards and is not timing critical.
-void ReceiveEngine::getBit(uint8_t inputBit) {
-    inputBit = inputBit ? 0x80 : 0x00;
-    _inputBitBuffer >>= 1; // Shift to right
-    _inputBitBuffer |= inputBit;   // Setting most significant bit when line was high.
-    _receiveBitCounter++;
-}
-
-// This function is for testing ... routine is timing critical. It needs to be invoked before de-asserting the DTE-transmit
-// clock line. The processBit() routine can be invoked afterwards and is not timing critical.
-void ReceiveEngine::getBit(void) {
-    uint8_t inputBit;
-    // Read value from port
-    inputBit = (*_TXD_PORT & _TXD_BIT) ? 0x01 : 0x00;
-    // Save in buffer
-    getBit(inputBit);
-}
 
 void ReceiveEngine::processBit(void) {
 
+    uint8_t localReceiveState;
+    localReceiveState = receiveState;
+
     // When we are out of sync (no char/byte sync on the line ...
-    if ( receiveState == RECEIVE_STATE_OUT_OF_SYNC ) {
+    if ( localReceiveState == RECEIVE_STATE_OUT_OF_SYNC ) {
 
         // When are out of sync then we constantly look for the sync bit pattern.
         if ( _inputBitBuffer == BSC_CONTROL_SYN ) {
@@ -137,15 +122,15 @@ void ReceiveEngine::processBit(void) {
     _receiveBitCounter = 0;
 
 
-    if ( receiveState == RECEIVE_STATE_PAD ) {
+    if ( localReceiveState == RECEIVE_STATE_PAD ) {
         _receiveDataBuffer->write(_latestByte);
         frameComplete();
         receiveState = RECEIVE_STATE_IDLE;
         return;
     }
 
-    if ( receiveState == RECEIVE_STATE_IDLE ||
-         receiveState == RECEIVE_STATE_DATA ) {
+    if ( localReceiveState == RECEIVE_STATE_DATA ||
+         localReceiveState == RECEIVE_STATE_IDLE ) {
 
         // If latest character is a SYNC/IDLE then just discard.
         if ( _latestByte == BSC_CONTROL_SYN ) {
@@ -180,7 +165,7 @@ void ReceiveEngine::processBit(void) {
 
     }
 
-    if ( receiveState == RECEIVE_STATE_IDLE ) {
+    if ( localReceiveState == RECEIVE_STATE_IDLE ) {
 
         if ( _previousByteDLE &&
              ( _latestByte == BSC_CONTROL_ACK0 || _latestByte == BSC_CONTROL_ACK1 ) ) {
@@ -209,7 +194,7 @@ void ReceiveEngine::processBit(void) {
         }
     }
 
-    if ( receiveState == RECEIVE_STATE_DATA ) {
+    if ( localReceiveState == RECEIVE_STATE_DATA ) {
 
         if ( _latestByte == BSC_CONTROL_SYN ) {
             // Ignore SYN chars sent as an idle character during data transmission.
@@ -229,7 +214,7 @@ void ReceiveEngine::processBit(void) {
         return;
     }
 
-    if ( receiveState == RECEIVE_STATE_TRANSPARENT_DATA ) {
+    if ( localReceiveState == RECEIVE_STATE_TRANSPARENT_DATA ) {
 
         // If we received two DLE's sequence, then we add the second
         // DLE to the buffer, discarding the first.
@@ -269,13 +254,13 @@ void ReceiveEngine::processBit(void) {
         return;
     }
 
-    if ( receiveState == RECEIVE_STATE_BCC1 ) {
+    if ( localReceiveState == RECEIVE_STATE_BCC1 ) {
         _receiveDataBuffer->write(_latestByte);
         receiveState = RECEIVE_STATE_BCC2;
         return;
     }
 
-    if ( receiveState == RECEIVE_STATE_BCC2 ) {
+    if ( localReceiveState == RECEIVE_STATE_BCC2 ) {
         _receiveDataBuffer->write(_latestByte);
         receiveState = RECEIVE_STATE_PAD;
         return;
@@ -288,10 +273,10 @@ inline void ReceiveEngine::frameComplete(void) {
     _savedFrame = _receiveDataBuffer;
     if ( _workingDataBuffer == 0 ) {
         _workingDataBuffer = 1;
-        _receiveDataBuffer = &(_receiveDataBuffer[1]);
+        _receiveDataBuffer = &(_dataBuffers[1]);
     } else {
         _workingDataBuffer = 0;
-        _receiveDataBuffer = &(_receiveDataBuffer[0]);
+        _receiveDataBuffer = &(_dataBuffers[0]);
     }
 #ifdef RECEIVE_ENGINE_DEBUG
     Serial.print("ReceiveEngine.frameComplete() - _workingDataBuffer now = ");

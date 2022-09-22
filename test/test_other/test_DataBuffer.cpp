@@ -14,7 +14,6 @@ void test_DataBufferReadOnly_constructor() {
 
 void test_DataBufferReadOnly_copy_constructor() {
     DataBufferReadOnly buff(6);
-    uint8_t dataByte;
 
     TEST_ASSERT_EQUAL(0, buff.getLength());
 
@@ -58,7 +57,6 @@ void test_DataBufferReadOnly_loadData_read_get() {
 
 void test_DataBuffer_copy_constructor(void) {
     DataBuffer buff;
-    uint8_t dataByte;
 
     buff.loadData(6, (uint8_t *)"ABCDEF");
     TEST_ASSERT_EQUAL(6, buff.getLength());
@@ -159,7 +157,7 @@ void test_DataBuffer_clear(void) {
 
 void test_DataBuffer_makeReadOnlyCopy(void) {
     DataBuffer buff;
-    uint8_t inByte, outByte;
+    uint8_t inByte;
 
     inByte = 'A';
     TEST_ASSERT_EQUAL(1, buff.write(inByte));
@@ -177,6 +175,22 @@ void test_DataBuffer_makeReadOnlyCopy(void) {
     TEST_ASSERT_EQUAL(-1, ro->get(3));
 }
 
+void test_DataBuffer_max_length(void) {
+    DataBuffer buff;
+
+    int returnedLen;
+    for (int x = 1; x <= DATABUFF_MAX_DATA; x++ ) {
+        returnedLen = buff.write('Z');
+        TEST_ASSERT_EQUAL(x, returnedLen);
+    }
+
+    TEST_ASSERT_EQUAL(DATABUFF_MAX_DATA, buff.getLength());
+    returnedLen = buff.write('A');
+    TEST_ASSERT_EQUAL(-1, returnedLen);
+    TEST_ASSERT_EQUAL(DATABUFF_MAX_DATA, buff.getLength());
+
+}
+
 void test_DataBuffer() {
     RUN_TEST(test_DataBufferReadOnly_constructor);
     RUN_TEST(test_DataBufferReadOnly_copy_constructor);
@@ -186,4 +200,5 @@ void test_DataBuffer() {
     RUN_TEST(test_DataBuffer_write_read_get);
     RUN_TEST(test_DataBuffer_clear);
     RUN_TEST(test_DataBuffer_makeReadOnlyCopy);
+    RUN_TEST(test_DataBuffer_max_length);
 }

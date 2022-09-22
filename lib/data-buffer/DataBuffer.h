@@ -81,7 +81,7 @@ class DataBuffer : public DataBufferReadOnly  {
         inline int write(uint8_t data)
         {
             int len = _len;
-            if ( len == DATABUFF_MAX_DATA - 1 )
+            if ( len >= DATABUFF_MAX_DATA )
                 return -1;     // Fail, buffer full.
 
             _buff[len++] = data;

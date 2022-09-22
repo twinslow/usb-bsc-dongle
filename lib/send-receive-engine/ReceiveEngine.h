@@ -19,8 +19,33 @@ class ReceiveEngine {
     public:
         ReceiveEngine(uint8_t txdPin, uint8_t ctsPin);    // Transmit pin of the DTE ... our receive pin.
         virtual ~ReceiveEngine(void);
-        void getBit(uint8_t val);
-        void getBit(void);
+
+        // This routine is timing critical. It needs to be invoked before de-asserting the DTE-transmit
+        // clock line. The processBit() routine can be invoked afterwards and is not timing critical.
+        inline void getBitSet(uint8_t inputBit) {
+            _inputBitBuffer >>= 1; // Shift to right
+            _inputBitBuffer |= inputBit;   // Setting most significant bit when line was high.
+            _receiveBitCounter++;
+        }
+
+        // This routine is timing critical. It needs to be invoked before de-asserting the DTE-transmit
+        // clock line. The processBit() routine can be invoked afterwards and is not timing critical.
+        inline void getBit(void) {
+            uint8_t inputBit;
+            // Read value from port
+            inputBit = (*_TXD_PORT & _TXD_BIT) ? 0x80 : 0x00;
+            // Save in buffer
+            getBitSet(inputBit);
+        }
+
+        // This routine is for testing.
+        inline void getBit(uint8_t inputBit) {
+            inputBit = inputBit ? 0x80 : 0x00;
+            getBitSet(inputBit);
+        }
+
+        // void getBit(uint8_t val);
+        // void getBit(void);
         void setBit(uint8_t bit);
         void processBit(void);
         virtual void startReceiving(void);
@@ -50,7 +75,7 @@ class ReceiveEngine {
         DataBuffer *         _savedFrame;
         // An indicator as to which data buffer is the current working buffer (pointed
         // to by _receiveDataBuffer).
-        int                  _workingDataBuffer = 0;
+        uint8_t              _workingDataBuffer = 0;
 
     private:
         uint8_t              _receiveBitCounter;
@@ -59,11 +84,10 @@ class ReceiveEngine {
         volatile bool        _frameComplete;
         volatile uint8_t     _inCharSync;
         inline void          frameComplete(void);
-        volatile uint8_t *_TXD_PORT;
-        uint8_t           _TXD_BIT;
-        uint8_t           _TXD_BITMASK;
-        uint8_t           _ctsPin;
-
+        volatile uint8_t *   _TXD_PORT;
+        uint8_t              _TXD_BIT;
+        uint8_t              _TXD_BITMASK;
+        uint8_t              _ctsPin;
 };
 
 #endif
