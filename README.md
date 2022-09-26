@@ -67,8 +67,7 @@ FF   55   55   32   32   10   02   27   F5   42   11   40   40
 SF        H    E    L    L    O         W    O    R    L    D
 1D   60   C8   C5   D3   D3   D6   40   E6   D6   D9   D3   C4
 
-          IC   DLE  ETX  BCC----   PAD
-40   40   13   10   03   6C   16   FF
+          IC   DLE  ETX  BCC----   PAD     6C   16   FF
 
 ### Response from CU is ACK0|1 or NAK
 

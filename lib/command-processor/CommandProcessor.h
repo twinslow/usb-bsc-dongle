@@ -20,9 +20,13 @@
 #define CMD_UNKNOWN 0x00
 #define CMD_WRITE   0x01
 #define CMD_READ    0x02
-#define CMD_POLL    0x05
+#define CMD_WRITE_READ    0x03
 #define CMD_DEBUG   0x09
 #define CMD_RESET   0x0F
+
+#define CMD_RESPONSE_MASK       0x80
+#define CMD_RESPONSE_TIMEOUT    0x10
+#define CMD_RESPONSE_ERROR      0x70
 
 #define CMD_TEXTMODE '0'    // 0x30
 
@@ -131,8 +135,7 @@ class CommandProcessorBinary : public CommandProcessor {
 
             int len;
             len = strlen(str);
-
-            sendResponse(CMD_DEBUG, len, (void *)str);
+            sendResponse(CMD_DEBUG|CMD_RESPONSE_MASK, len, (void *)str);
         }
         inline void sendDebug(const char *str) {
             if ( !this->debugEnabled )
@@ -140,8 +143,7 @@ class CommandProcessorBinary : public CommandProcessor {
 
             int len;
             len = strlen(str);
-
-            sendResponse(CMD_DEBUG, len, (void *)str);
+            sendResponse(CMD_DEBUG|CMD_RESPONSE_MASK, len, (void *)str);
         }
         int  getCommandCode();
         int  getCommandDataLength();
@@ -152,7 +154,6 @@ class CommandProcessorBinary : public CommandProcessor {
 
         virtual void sendDebugToHost(char * str);
         virtual void sendDebugToHost(const char * str);
-
 
     private:
         int     commandCode;
@@ -222,6 +223,8 @@ class CommandProcessorText : public CommandProcessor {
 #define TXT_CMD_DEBUG   9
 #define TXT_CMD_BIN     10
 #define TXT_CMD_HELP    12
+#define TXT_CMD_MEM     13
+#define TXT_CMD_RESET   15
 
 
 

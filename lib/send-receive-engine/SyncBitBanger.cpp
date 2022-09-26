@@ -172,31 +172,31 @@ void SyncBitBanger::init() {
     syncBitBangerInstance = this;
     interruptCallCount = 0;
 
-    Serial.print(F("DEBUG: Setting up interrupt routine with interval of "));
-    Serial.print(interruptPeriod);
-    Serial.println(F(" micro seconds."));
+    //Serial.print(F("DEBUG: Setting up interrupt routine with interval of "));
+    //Serial.print(interruptPeriod);
+    //Serial.println(F(" micro seconds."));
 
     Timer1.initialize(interruptPeriod); // 52 us for 9600 bps.
     Timer1.attachInterrupt(serialDriverInterruptRoutine);
 
     delay(1000);
     unsigned int callCount = interruptCallCount;
-    Serial.print(F("After one second the interrupt routine has been called "));
-    Serial.print(callCount);
-    Serial.println(F(" times."));
+    //Serial.print(F("After one second the interrupt routine has been called "));
+    //Serial.print(callCount);
+    //Serial.println(F(" times."));
 
-    Serial.print(F("DEBUG: RXCLK_PORT          = 0x"));
-    Serial.println((unsigned int)RXCLK_PORT, 16);
-    Serial.print(F("DEBUG: RXCLK_BIT           = 0x"));
-    Serial.println((unsigned int)RXCLK_BIT, 16);
-    Serial.print(F("DEBUG: RXCLK_BITMASK       = 0x"));
-    Serial.println((unsigned int)RXCLK_BITMASK, 16);
-    Serial.print(F("DEBUG: TXCLK_PORT          = 0x"));
-    Serial.println((unsigned int)TXCLK_PORT, 16);
-    Serial.print(F("DEBUG: TXCLK_BIT           = 0x"));
-    Serial.println((unsigned int)TXCLK_BIT, 16);
-    Serial.print(F("DEBUG: TXCLK_BITMASK       = 0x"));
-    Serial.println((unsigned int)TXCLK_BITMASK, 16);
+    //Serial.print(F("DEBUG: RXCLK_PORT          = 0x"));
+    //Serial.println((unsigned int)RXCLK_PORT, 16);
+    //Serial.print(F("DEBUG: RXCLK_BIT           = 0x"));
+    //Serial.println((unsigned int)RXCLK_BIT, 16);
+    //Serial.print(F("DEBUG: RXCLK_BITMASK       = 0x"));
+    //Serial.println((unsigned int)RXCLK_BITMASK, 16);
+    //Serial.print(F("DEBUG: TXCLK_PORT          = 0x"));
+    //Serial.println((unsigned int)TXCLK_PORT, 16);
+    //Serial.print(F("DEBUG: TXCLK_BIT           = 0x"));
+    //Serial.println((unsigned int)TXCLK_BIT, 16);
+    //Serial.print(F("DEBUG: TXCLK_BITMASK       = 0x"));
+    //Serial.println((unsigned int)TXCLK_BITMASK, 16);
 }
 
 SyncControl::SyncControl(SyncBitBanger * instance) {

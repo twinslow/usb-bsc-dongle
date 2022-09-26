@@ -9,14 +9,14 @@ CommandProcessor::CommandProcessor(
     SendEngine * sEng,
     ReceiveEngine * rEng,
     SyncControl * syncCntrl  ) {
-    Serial.println(F("CommandProcessor constructor starting."));
+    //Serial.println(F("CommandProcessor constructor starting."));
 
     this->sendEngine = sEng;
     this->receiveEngine = rEng;
     this->syncControl = syncCntrl;
 
     this->lastDataReceivedTime = millis();
-    Serial.println(F("CommandProcessor constructor complete."));
+    //Serial.println(F("CommandProcessor constructor complete."));
 }
 
 CommandProcessor::~CommandProcessor() {
@@ -54,7 +54,7 @@ CommandProcessorBinary::CommandProcessorBinary(
     SendEngine * sEng,
     ReceiveEngine * rEng,
     SyncControl * syncCntrl  ) : CommandProcessor(sEng, rEng, syncControl) {
-    Serial.println(F("CommandProcessorBinary constructor complete."));
+    //Serial.println(F("CommandProcessorBinary constructor complete."));
 }
 
 CommandProcessorBinary::~CommandProcessorBinary() {
@@ -117,21 +117,29 @@ void CommandProcessorBinary::copyCommandDataToSender() {
     for (i = 0; i < cmdlen; i++) {
         data = this->serialRead();
         if (data >= 0) {
-            sprintf(printbuff, "     Adding byte %d to send-buffer", data);
-            sendDebug(printbuff);
+            // sprintf(printbuff, "     Adding byte %d to send-buffer", data);
+            // sendDebug(printbuff);
             sendEngine->addByte(data);
         }
     }
     sendEngine->addByte(BSC_CONTROL_PAD);
 }
 
+
+int freeRam () {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
 void CommandProcessorBinary::process() {
-    DataBuffer * frame;
 
     getCommand();
+    // this->sendResponse(0x8C, freeRam());
 
     switch(this->commandCode) {
         case CMD_RESET:
+            // sendDebug("RESET command starting");
             syncControl->deviceReset();
             sendDebug("RESET command completed");
             sendResponse(RESP_BIT|CMD_RESET);
@@ -141,6 +149,7 @@ void CommandProcessorBinary::process() {
                 int debugValue = this->serialRead();
                 this->enableDebug( debugValue ? true : false );
                 sendDebug("DEBUG command completed");
+                sendResponse(0x8C, freeRam());
                 sendResponse(RESP_BIT|CMD_DEBUG);
             }
             break;
@@ -163,43 +172,46 @@ void CommandProcessorBinary::process() {
                     sendEngine->getRemainingDataToBeSent());
             sendDebug(printbuff);
 
-            sendResponse(RESP_BIT|CMD_WRITE);
+            sendResponse(CMD_WRITE | CMD_RESPONSE_MASK);
             break;
 
-        case CMD_POLL:
+        case CMD_WRITE_READ:
             copyCommandDataToSender();
 
             sendEngine->startSending();
             sendEngine->stopSendingOnIdle();
             sendEngine->waitForSendIdle();
 
-            sprintf(printbuff, "POLL command completed with %d bytes of data remaining to be sent",
+            sprintf(printbuff, "WRITE_READ command has %d bytes of data remaining to be sent",
                     sendEngine->getRemainingDataToBeSent());
             sendDebug(printbuff);
 
-            sendResponse(RESP_BIT|CMD_POLL);
+
+            receiveEngine->startReceiving();
+            sendDebug("Reading response ...");
+
+            if ( receiveEngine->waitReceivedFrameComplete(RECEIVE_TIMEOUT) < 0 ) {
+                receiveEngine->getDataBuffer();
+                sendResponse(CMD_WRITE_READ | CMD_RESPONSE_MASK | CMD_RESPONSE_TIMEOUT);
+            } else {
+                DataBuffer * frame = receiveEngine->getSavedFrame();
+                sendResponse(CMD_WRITE_READ | CMD_RESPONSE_MASK,
+                    frame->getLength(), frame->getData());
+            }
             break;
 
         case CMD_READ:
             receiveEngine->startReceiving();
-            // sprintf(printbuff, "Executing command READ");
-            // sendDebug(printbuff);
+            sendDebug("Reading response ...");
 
             if ( receiveEngine->waitReceivedFrameComplete(RECEIVE_TIMEOUT) < 0 ) {
-                // sendDebug("READ command timeout");
-                sendResponse(RESP_BIT|ERROR_BIT|CMD_READ, 0x0001);
+                receiveEngine->getDataBuffer();
+                sendResponse(CMD_READ | CMD_RESPONSE_MASK | CMD_RESPONSE_TIMEOUT);
             } else {
-                frame = receiveEngine->getSavedFrame();
-
-                // sprintf(printbuff, "Got response -- sending frame of length %d back to host", frame->getLength() );
-                // sendDebug(printbuff);
-
-                sendResponse(RESP_BIT|CMD_READ,
-                    frame->getLength(),
-                    frame->getData());
-                // sendDebug("READ command completed");
+                DataBuffer * frame = receiveEngine->getSavedFrame();
+                sendResponse(CMD_READ | CMD_RESPONSE_MASK,
+                    frame->getLength(), frame->getData());
             }
-
             break;
 
         default:
@@ -281,6 +293,12 @@ int CommandProcessorText::readCommand() {
 
     if ( !strcmp(command,"BIN") )
         return TXT_CMD_BIN;
+
+    if ( !strcmp(command,"RESET") )
+        return TXT_CMD_RESET;
+
+    if ( !strcmp(command,"MEM") )
+        return TXT_CMD_MEM;
 
     if ( !strcmp(command,"HELP") || !strcmp(command,"?") )
         return TXT_CMD_HELP;
@@ -372,6 +390,20 @@ unsigned long CommandProcessorText::getAndProcessCommand() {
             }
             break;
 
+        case TXT_CMD_MEM:
+            this->useSerial->print(F("Memory has "));
+            this->useSerial->print(freeRam());
+            this->useSerial->println(F(" bytes."));
+            break;
+
+        case TXT_CMD_RESET:
+            this->useSerial->println(F("Starting RESET."));
+            // this->useSerial->print(F("this->syncControl = 0x"));
+            // this->useSerial->println((unsigned int)this->syncControl, 16);
+            this->syncControl->deviceReset();
+            this->useSerial->println(F("RESET complete."));
+            break;
+
         case TXT_CMD_BIN:
             setNewCommandMode(HOST_CMD_MODE_BINARY);
             sendDebug("TEXTMODE command processed ... mode will be changed");
@@ -382,6 +414,8 @@ unsigned long CommandProcessorText::getAndProcessCommand() {
             this->useSerial->println(F("ADDR hex-addr-poll,hex-addr-select,hex-dev-addr"));
             this->useSerial->println(F("POLL"));
             this->useSerial->println(F("WRITE"));
+            this->useSerial->println(F("RESET"));
+            this->useSerial->println(F("MEM"));
             this->useSerial->println(F("BIN\n"));
             break;
 
@@ -548,15 +582,15 @@ void CommandProcessorText::execRead() {
 
 CommandProcessorFrontEnd::CommandProcessorFrontEnd(SyncBitBanger * bitBanger) {
     this->syncBitBanger = bitBanger;
-    Serial.println(F("Creating SyncControl instance."));
+    //Serial.println(F("Creating SyncControl instance."));
     this->syncControl = new SyncControl(bitBanger);
 
-    Serial.println(F("Creating CommandProcessorBinary instance."));
+    //Serial.println(F("Creating CommandProcessorBinary instance."));
     cmdProcessor = new CommandProcessorBinary(
         bitBanger->sendEngine,
         bitBanger->receiveEngine,
         syncControl);
-    Serial.println(F("CommandProcessorFrontEnd constructor complete."));
+    //Serial.println(F("CommandProcessorFrontEnd constructor complete."));
 }
 
 CommandProcessorFrontEnd::~CommandProcessorFrontEnd() {

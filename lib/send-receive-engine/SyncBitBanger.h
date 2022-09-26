@@ -79,7 +79,7 @@ class SyncControl {
     public:
         SyncControl(SyncBitBanger *bitBangerInstance);
         virtual ~SyncControl() {};
-        virtual void deviceReset();
+        void deviceReset();
     private:
         SyncBitBanger * bitBangerInstance;
 };

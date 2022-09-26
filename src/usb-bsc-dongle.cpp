@@ -102,10 +102,8 @@ CommandProcessorFrontEnd * commandProcFE;
 
 void loop() {
     static unsigned long lastDataReceivedTime = millis();
-    //Serial.println("DEBUG: loop() starting");
 
     if ( Serial ) {
-//        Serial.println(F("DEBUG: About to call commandProcessor front-end."));
         lastDataReceivedTime = commandProcFE->getAndProcessCommand();
     }
 }
@@ -127,40 +125,14 @@ void setup() {
       ; // wait for serial port to connect. Needed for native USB port only
     }
 
-    Serial.println(F("DEBUG: Serial port is available."));
-
     pinMode(LED_BUILTIN, OUTPUT);
-
-    Serial.println(F("DEBUG: About to setup bit-banger."));
     syncBitBanger = new SyncBitBanger();
-    // Initialize ... this will start up the interrupt routine for
-    // sending and receiving bits
     syncBitBanger->init();
-    Serial.println(F("DEBUG: Bit-banger init() completed."));
-
     commandProcFE = new CommandProcessorFrontEnd(syncBitBanger);
-    Serial.println(F("DEBUG: commandProcFE instantiated."));
-
-
     syncBitBanger->setDsrReady();
-    Serial.println(F("Completed setDsrReady() processing."));
-
-    sprintf(debugbuff, "txclkPin=%d", syncBitBanger->txclkPin);
-    Serial.println(debugbuff);
-
-    port = portOutputRegister(digitalPinToPort(syncBitBanger->txclkPin));
-
-    sprintf(debugbuff, "port=%ld", (long int) port);
-    Serial.println(debugbuff);
-
-    mask1 = digitalPinToBitMask(syncBitBanger->txclkPin);
-    sprintf(debugbuff, "mask1=%d", mask1);
-    Serial.println(debugbuff);
-
-    mask2  = ~digitalPinToBitMask(syncBitBanger->txclkPin);
-    sprintf(debugbuff, "mask2=%d", mask2);
-    Serial.println(debugbuff);
-
+    // port = portOutputRegister(digitalPinToPort(syncBitBanger->txclkPin));
+    // mask1 = digitalPinToBitMask(syncBitBanger->txclkPin);
+    // mask2  = ~digitalPinToBitMask(syncBitBanger->txclkPin);
     return;
 }
 
