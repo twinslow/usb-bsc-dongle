@@ -22,7 +22,7 @@ class SendEngine {
         virtual void stopSendingOnIdle();
         virtual void waitForSendIdle();
 
-        uint8_t *getRxdPort();
+        volatile uint8_t *getRxdPort();
         uint8_t getRxdBitMask();
         uint8_t getRxdBitNotMask();
         uint8_t getBitBuffer();

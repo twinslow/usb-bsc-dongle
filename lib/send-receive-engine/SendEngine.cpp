@@ -33,9 +33,9 @@ void SendEngine::clearBuffer(void)
     _stopOnIdle = false;
 }
 
-uint8_t *SendEngine::getRxdPort(void)
+volatile uint8_t * SendEngine::getRxdPort(void)
 {
-    return (uint8_t *)_RXD_PORT;
+    return _RXD_PORT;
 }
 
 uint8_t SendEngine::getRxdBitMask(void) {
