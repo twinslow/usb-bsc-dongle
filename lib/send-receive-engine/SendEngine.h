@@ -4,13 +4,15 @@
 #include <Arduino.h>
 #include "DataBuffer.h"
 
+#include "mcu_abstraction.h"
+
 #define SEND_STATE_OFF                1
 #define SEND_STATE_IDLE               2
 #define SEND_STATE_XMIT               3
 
 class SendEngine {
     public:
-        SendEngine(uint8_t rxdPin);
+        SendEngine(gpio_pin_t rxdPin);
         virtual ~SendEngine();
         void sendBit(void);
         volatile uint8_t xmitState = SEND_STATE_IDLE;
@@ -22,9 +24,10 @@ class SendEngine {
         virtual void stopSendingOnIdle();
         virtual void waitForSendIdle();
 
-        volatile uint8_t *getRxdPort();
-        uint8_t getRxdBitMask();
-        uint8_t getRxdBitNotMask();
+        pgpio_port_t getRxdPort();
+        gpio_port_t getRxdBitMask();
+        gpio_port_t getRxdBitNotMask();
+
         uint8_t getBitBuffer();
         uint8_t getBitBufferLength();
         int getRemainingDataToBeSent(void);
@@ -38,9 +41,9 @@ class SendEngine {
         uint8_t              _sendBitBufferLength;
         volatile uint8_t     _stopOnIdle;
 
-        volatile uint8_t *_RXD_PORT;
-        uint8_t           _RXD_BIT;
-        uint8_t           _RXD_BITMASK;
+        volatile pgpio_port_t  _RXD_PORT;
+        gpio_port_t            _RXD_BIT;
+        gpio_port_t            _RXD_BITMASK;
         int               _dataByte1, _dataByte2;
 
         int addOutputByte(uint8_t data);

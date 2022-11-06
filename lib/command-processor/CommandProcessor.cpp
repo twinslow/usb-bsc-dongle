@@ -39,7 +39,7 @@ uint8_t CommandProcessor::getNewCommandMode() {
     return this->newCommandMode;
 }
 
-void CommandProcessor::injectSerial(Serial_ *serialInstance) {
+void CommandProcessor::injectSerial(SerialClass *serialInstance) {
     this->useSerial = serialInstance;
 }
 

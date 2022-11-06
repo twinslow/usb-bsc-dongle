@@ -14,6 +14,8 @@
 
 #include "bsc_protocol.h"
 
+#include "mcu_abstraction.h"
+
 #define RESP_BIT    0x80
 #define ERROR_BIT   0x40
 
@@ -61,7 +63,7 @@ class CommandProcessor {
 
         // This call allows an instance (normally a mock instance) of Serial_
         // to be injected for unit testing.
-        void injectSerial(Serial_ *serialInstance);
+        void injectSerial(SerialClass *serialInstance);
 
         char printbuff[80];
 
@@ -72,7 +74,7 @@ class CommandProcessor {
 
         // Use the standard Serial instance unless injected with something
         // else using injectSerial() method.
-        Serial_ * useSerial = &Serial;
+        SerialClass * useSerial = SerialInstance;
 
         unsigned long   lastDataReceivedTime;
 

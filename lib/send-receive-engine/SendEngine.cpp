@@ -1,11 +1,12 @@
 #include <Arduino.h>
 #include "SendEngine.h"
 #include "bsc_protocol.h"
+#include "mcu_abstraction.h"
 
 // Pins are named with respect to the DTE. As we are implementing a DCE interface, our
 // RXD pin is being used to send data (the DTE is receiving on this pin).
 
-SendEngine::SendEngine(uint8_t rxdPin) {
+SendEngine::SendEngine(gpio_pin_t rxdPin) {
     _RXD_PORT       = portOutputRegister(digitalPinToPort(rxdPin));
     _RXD_BIT        = digitalPinToBitMask(rxdPin);
     _RXD_BITMASK    = ~_RXD_BIT;
@@ -33,16 +34,16 @@ void SendEngine::clearBuffer(void)
     _stopOnIdle = false;
 }
 
-volatile uint8_t * SendEngine::getRxdPort(void)
+pgpio_port_t SendEngine::getRxdPort(void)
 {
     return _RXD_PORT;
 }
 
-uint8_t SendEngine::getRxdBitMask(void) {
+gpio_port_t SendEngine::getRxdBitMask(void) {
     return _RXD_BIT;
 }
 
-uint8_t SendEngine::getRxdBitNotMask(void) {
+gpio_port_t SendEngine::getRxdBitNotMask(void) {
     return _RXD_BITMASK;
 }
 

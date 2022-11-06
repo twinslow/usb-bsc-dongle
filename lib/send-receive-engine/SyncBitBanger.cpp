@@ -1,4 +1,5 @@
 #include "SyncBitBanger.h"
+#include "mcu_abstraction.h"
 
 SyncBitBanger * SyncBitBanger::syncBitBangerInstance = NULL;
 unsigned int SyncBitBanger::interruptCallCount = 0;
